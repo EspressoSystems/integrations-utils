@@ -127,12 +127,8 @@ EOF
     echo -e "${GREEN}✅ Summary saved to: enclave_verification_summary.txt${NC}"
 }
 
-# Function to ask user about contract update
-ask_contract_update() {
-    echo ""
-    echo -e "${YELLOW}🔗 Contract Update Setup${NC}"
-    echo "==============================="
-    
+# Function to get contract address from user or environment
+get_contract_address() {
     if [ -z "${CONTRACT_ADDRESS}" ]; then
         echo -e "${YELLOW}⚠️  No contract address specified in TEE_SGX_ADDRESS environment variable${NC}"
         echo -e "${YELLOW}💡 Create a .env file from env.template and set TEE_SGX_ADDRESS${NC}"
@@ -145,52 +141,65 @@ ask_contract_update() {
     
     if [ -n "${CONTRACT_ADDRESS}" ]; then
         echo -e "${GREEN}✅ Contract address: ${CONTRACT_ADDRESS}${NC}"
-        
-        echo -e "${BLUE}📋 Available RPC endpoints:${NC}"
-        echo "1. Ethereum Mainnet: ${ETHEREUM_MAINNET_RPC}"
-        echo "2. Arbitrum Mainnet: ${ARBITRUM_MAINNET_RPC}"
-        echo "3. Ethereum Sepolia: ${ETHEREUM_SEPOLIA_RPC}"
-        echo "4. Arbitrum Sepolia: ${ARBITRUM_SEPOLIA_RPC}"
-        echo "5. Custom RPC"
-        
-        read -p "Select RPC endpoint (1/2/3/4/5): " -n 1 -r
-        echo
-        
-        case $REPLY in
-            1)
-                RPC_URL="${ETHEREUM_MAINNET_RPC}"
-                NETWORK="Ethereum Mainnet"
-                ;;
-            2)
-                RPC_URL="${ARBITRUM_MAINNET_RPC}"
-                NETWORK="Arbitrum Mainnet"
-                ;;
-            3)
-                RPC_URL="${ETHEREUM_SEPOLIA_RPC}"
-                NETWORK="Ethereum Sepolia"
-                ;;
-            4)
-                RPC_URL="${ARBITRUM_SEPOLIA_RPC}"
-                NETWORK="Arbitrum Sepolia"
-                ;;
-            5)
-                read -p "Enter custom RPC URL: " RPC_URL
-                NETWORK="Custom"
-                ;;
-            *)
-                echo -e "${YELLOW}⚠️  Invalid selection, skipping contract setup${NC}"
-                return
-                ;;
-        esac
-        
-        echo -e "${GREEN}✅ Selected: ${NETWORK} - ${RPC_URL}${NC}"
-        
-        # Run the contract update function which includes owner check
-        run_contract_update
-        
+        return 0
     else
         echo -e "${YELLOW}💡 No contract address provided, skipping contract setup${NC}"
+        return 1
     fi
+}
+
+# Function to ask user about contract update
+ask_contract_update() {
+    echo ""
+    echo -e "${YELLOW}🔗 Contract Update Setup${NC}"
+    echo "==============================="
+    
+    # Get contract address first
+    if ! get_contract_address; then
+        return
+    fi
+    
+    echo -e "${BLUE}📋 Available RPC endpoints:${NC}"
+    echo "1. Ethereum Mainnet: ${ETHEREUM_MAINNET_RPC}"
+    echo "2. Arbitrum Mainnet: ${ARBITRUM_MAINNET_RPC}"
+    echo "3. Ethereum Sepolia: ${ETHEREUM_SEPOLIA_RPC}"
+    echo "4. Arbitrum Sepolia: ${ARBITRUM_SEPOLIA_RPC}"
+    echo "5. Custom RPC"
+    
+    read -p "Select RPC endpoint (1/2/3/4/5): " -n 1 -r
+    echo
+    
+    case $REPLY in
+        1)
+            RPC_URL="${ETHEREUM_MAINNET_RPC}"
+            NETWORK="Ethereum Mainnet"
+            ;;
+        2)
+            RPC_URL="${ARBITRUM_MAINNET_RPC}"
+            NETWORK="Arbitrum Mainnet"
+            ;;
+        3)
+            RPC_URL="${ETHEREUM_SEPOLIA_RPC}"
+            NETWORK="Ethereum Sepolia"
+            ;;
+        4)
+            RPC_URL="${ARBITRUM_SEPOLIA_RPC}"
+            NETWORK="Arbitrum Sepolia"
+            ;;
+        5)
+            read -p "Enter custom RPC URL: " RPC_URL
+            NETWORK="Custom"
+            ;;
+        *)
+            echo -e "${YELLOW}⚠️  Invalid selection, skipping contract setup${NC}"
+            return
+            ;;
+    esac
+    
+    echo -e "${GREEN}✅ Selected: ${NETWORK} - ${RPC_URL}${NC}"
+    
+    # Run the contract update function which includes owner check
+    run_contract_update
 }
 
 # Function to run contract update
