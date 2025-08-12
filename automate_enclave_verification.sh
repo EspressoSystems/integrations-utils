@@ -45,9 +45,9 @@ check_report_file() {
     
     echo -e "${GREEN}✅ Found report file: ${REPORT_FILE}${NC}"
     
-    # Display the content
-    echo -e "${BLUE}📋 Content preview:${NC}"
-    head -c 100 "${REPORT_FILE}"
+    # Display the content preview from the end
+    echo -e "${BLUE}📋 Content preview (end of file):${NC}"
+    tail -c 80 "${REPORT_FILE}"
     echo "..."
 }
 
