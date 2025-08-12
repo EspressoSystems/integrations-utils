@@ -29,7 +29,6 @@ trap cleanup EXIT
 # DATA PROCESSING MODULE
 # =============================================================================
 
-# Function to check if report file exists
 check_report_file() {
     if [ ! -f "${REPORT_FILE}" ]; then
         echo -e "${RED}❌ Report file '${REPORT_FILE}' not found${NC}"
@@ -41,7 +40,6 @@ check_report_file() {
     echo -e "${GREEN}✅ Found report file: ${REPORT_FILE}${NC}"
 }
 
-# Function to convert hex to binary
 convert_to_binary() {
     echo -e "${YELLOW}🔄 Converting hex to binary...${NC}"
     
@@ -54,7 +52,6 @@ convert_to_binary() {
     fi
 }
 
-# Function to decode the report data
 decode_report_data() {
     echo -e "${YELLOW}🔍 Decoding report data...${NC}"
     
@@ -69,11 +66,9 @@ decode_report_data() {
     fi
 }
 
-# Function to extract enclave values
 extract_enclave_values() {
     echo -e "${YELLOW}🔍 Extracting enclave values...${NC}"
     
-    # Extract the MRENCLAVE value from the decode output
     MRENCLAVE=$(./decode_report_data.sh | grep "MRENCLAVE:" | cut -d' ' -f2)
     MRSIGNER=$(./decode_report_data.sh | grep "MRSIGNER:" | cut -d' ' -f2)
     
@@ -90,15 +85,13 @@ extract_enclave_values() {
 # CONTRACT INTERACTION MODULE
 # =============================================================================
 
-# Function to prepare SGX TEE contract interaction
 prepare_contract_interaction() {
     echo -e "${YELLOW}🔗 Preparing contract update...${NC}"
     
-    # Extract enclave values first
     extract_enclave_values
     
-    # Create a summary file for easy reference
     cat > enclave_verification_summary.txt << EOF
+
 MR Enclave Summary
 ===============================
 
@@ -127,7 +120,6 @@ EOF
     echo -e "${GREEN}✅ Summary saved to: enclave_verification_summary.txt${NC}"
 }
 
-# Function to get contract address from user or environment
 get_contract_address() {
     if [ -z "${CONTRACT_ADDRESS}" ]; then
         echo -e "${YELLOW}⚠️  No contract address specified in TEE_SGX_ADDRESS environment variable${NC}"
@@ -148,7 +140,6 @@ get_contract_address() {
     fi
 }
 
-# Function to select network and RPC endpoint
 select_network_rpc() {
     echo -e "${BLUE}📋 Available RPC endpoints:${NC}"
     echo "1. Ethereum Mainnet: ${ETHEREUM_MAINNET_RPC}"
@@ -191,89 +182,65 @@ select_network_rpc() {
     return 0
 }
 
-# Function to ask user about contract update
 ask_contract_update() {
     echo ""
     echo -e "${YELLOW}🔗 Contract Update Setup${NC}"
     echo "==============================="
     
-    # Get contract address first
     if ! get_contract_address; then
         return
     fi
     
-    # Select network and RPC endpoint
     if ! select_network_rpc; then
         return
     fi
     
-    # Run the contract update function which includes owner check
     run_contract_update
 }
 
-# Function to run contract update
-run_contract_update() {
-    echo -e "${YELLOW}🚀 Contract Update Command${NC}"
-    echo "==============================="
-    
-    # Extract MRENCLAVE for the call (in case it wasn't set)
-    if [ -z "${MRENCLAVE}" ]; then
-        MRENCLAVE=$(./decode_report_data.sh | grep "MRENCLAVE:" | cut -d' ' -f2)
-    fi
-    
-    echo -e "${BLUE}📋 Contract Call Details:${NC}"
-    echo "Network: ${NETWORK}"
-    echo "Contract: ${CONTRACT_ADDRESS}"
-    echo "Function: setEnclaveHash (0x93b5552e)"
-    echo "Parameters:"
-    echo "  - enclaveHash: 0x${MRENCLAVE}"
-    echo "  - valid: true"
+get_contract_owner() {
+    echo -e "${YELLOW}🔄 Getting contract owner...${NC}"
     echo ""
     
-    # Ask if they want to get the TEE contract owner address
-    read -p "Would you like to get the TEE contract owner address? (y/n): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo -e "${YELLOW}🔄 Getting contract owner...${NC}"
+    if cast call "${CONTRACT_ADDRESS}" "owner()" --rpc-url "${RPC_URL}" 2>/dev/null; then
+        OWNER_ADDRESS=$(cast call "${CONTRACT_ADDRESS}" "owner()" --rpc-url "${RPC_URL}" 2>/dev/null | sed 's/^0x000000000000000000000000/0x/' 2>/dev/null)
+        echo -e "${GREEN}✅ Contract owner: ${OWNER_ADDRESS}${NC}"
+        echo -e "${YELLOW}💡 Look for this address in Bitwarden to find the private key${NC}"
+        return 0
+    else
+        echo -e "${RED}❌ Failed to get contract owner. Check contract address and RPC.${NC}"
+        echo -e "${YELLOW}💡 Common issues:${NC}"
+        echo "   - Contract address is incorrect"
+        echo "   - RPC endpoint is invalid or not responding"
         echo ""
-        
-        if cast call "${CONTRACT_ADDRESS}" "owner()" --rpc-url "${RPC_URL}" 2>/dev/null; then
-            OWNER_ADDRESS=$(cast call "${CONTRACT_ADDRESS}" "owner()" --rpc-url "${RPC_URL}" 2>/dev/null | sed 's/^0x000000000000000000000000/0x/' 2>/dev/null)
-            echo -e "${GREEN}✅ Contract owner: ${OWNER_ADDRESS}${NC}"
-            echo -e "${YELLOW}💡 Look for this address in Bitwarden to find the private key${NC}"
+        echo -e "${YELLOW}💡 Would you like to install 'cast' (Foundry's command-line tool)?${NC}"
+        echo "This is required for contract interaction."
+        read -p "Install cast now? (y/n): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo -e "${BLUE}📋 Downloading Foundry...${NC}"
+            curl -L https://foundry.paradigm.xyz | bash
+            echo -e "${GREEN}✅ Foundry downloaded.${NC}"
+            echo -e "${BLUE}📋 Installing Foundry...${NC}"
+            foundryup
+            echo -e "${GREEN}✅ Foundry installed.${NC}"
+            echo -e "${YELLOW}💡 You can now run the script again to get the contract owner.${NC}"
         else
-            echo -e "${RED}❌ Failed to get contract owner. Check contract address and RPC.${NC}"
-            echo -e "${YELLOW}💡 Common issues:${NC}"
-            echo "   - Contract address is incorrect"
-            echo "   - RPC endpoint is invalid or not responding"
-            echo ""
-            echo -e "${YELLOW}💡 Would you like to install 'cast' (Foundry's command-line tool)?${NC}"
-            echo "This is required for contract interaction."
-            read -p "Install cast now? (y/n): " -n 1 -r
-            echo
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                echo -e "${BLUE}📋 Downloading Foundry...${NC}"
-                curl -L https://foundry.paradigm.xyz | bash
-                echo -e "${GREEN}✅ Foundry downloaded.${NC}"
-                echo -e "${BLUE}📋 Installing Foundry...${NC}"
-                foundryup
-                echo -e "${GREEN}✅ Foundry installed.${NC}"
-                echo -e "${YELLOW}💡 You can now run the script again to get the contract owner.${NC}"
-            else
-                echo -e "${YELLOW}💡 You can manually install 'cast' later by following the instructions on Foundry's website.${NC}"
-            fi
+            echo -e "${YELLOW}💡 You can manually install 'cast' later by following the instructions on Foundry's website.${NC}"
         fi
-        echo ""
+        return 1
     fi
-    
-    # Show the complete command that will work
+}
+
+display_update_command() {
     echo -e "${BLUE}📋 Complete command to update the contract:${NC}"
     echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key YOUR_PRIVATE_KEY"
     echo ""
     echo -e "${YELLOW}⚠️  WARNING: Never share your private key and be careful with --private-key flag${NC}"
     echo -e "${YELLOW}💡 Replace YOUR_PRIVATE_KEY with the actual private key from Bitwarden${NC}"
-    
-    # Check if private key is set in environment
+}
+
+execute_contract_update() {
     if [ -n "${PRIVATE_KEY}" ]; then
         echo ""
         echo -e "${GREEN}🔑 Private key found in environment${NC}"
@@ -303,11 +270,52 @@ run_contract_update() {
     fi
 }
 
+run_contract_update() {
+    echo -e "${YELLOW}🚀 Contract Update Command${NC}"
+    echo "==============================="
+    echo ""
+    
+    # Extract MRENCLAVE for the call (in case it wasn't set)
+    if [ -z "${MRENCLAVE}" ]; then
+        MRENCLAVE=$(./decode_report_data.sh | grep "MRENCLAVE:" | cut -d' ' -f2)
+    fi
+    
+    echo -e "${BLUE}📋 Contract Call Details:${NC}"
+    echo "Network: ${NETWORK}"
+    echo "Contract: ${CONTRACT_ADDRESS}"
+    echo "Function: setEnclaveHash (0x93b5552e)"
+    echo "Parameters:"
+    echo "  - enclaveHash: 0x${MRENCLAVE}"
+    echo "  - valid: true"
+    echo ""
+    
+    # Optional
+    echo -e "${BLUE}📋 Step 4/6: Contract Owner Lookup${NC}"
+    echo "----------------------------------------"
+    read -p "Would you like to get the TEE contract owner address? (y/n): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        get_contract_owner
+        echo ""
+    else
+        echo -e "${YELLOW}⏭️  Skipping contract owner lookup${NC}"
+        echo ""
+    fi
+    
+    echo -e "${BLUE}📋 Step 5/6: Display Update Command${NC}"
+    echo "----------------------------------------"
+    display_update_command
+    echo ""
+    
+    echo -e "${BLUE}📋 Step 6/6: Execute Contract Update${NC}"
+    echo "----------------------------------------"
+    execute_contract_update
+}
+
 # =============================================================================
 # OUTPUT MODULE
 # =============================================================================
 
-# Function to show usage
 show_usage() {
     echo -e "${BLUE}🔍 MR Enclave Update Automation${NC}"
     echo "============================================="
@@ -335,7 +343,6 @@ show_usage() {
     echo "  $0                    # Run automation"
 }
 
-# Function to display next steps
 display_next_steps() {
     echo ""
     echo -e "${GREEN}🎉 Automation Complete!${NC}"
@@ -366,16 +373,25 @@ display_next_steps() {
 full_automation() {
     echo -e "${BLUE}🔍 Starting Full MR Enclave Update Automation${NC}"
     echo "======================================================="
+    echo ""
     
     # Data Processing Module
+    echo -e "${BLUE}📋 Step 1/6: Processing Enclave Data${NC}"
+    echo "----------------------------------------"
     check_report_file
     convert_to_binary
     decode_report_data
+    echo ""
     
     # Contract Interaction Module
+    echo -e "${BLUE}📋 Step 2/6: Preparing Contract Interaction${NC}"
+    echo "----------------------------------------"
     prepare_contract_interaction
+    echo ""
     
     # User Interface Module
+    echo -e "${BLUE}📋 Step 3/6: Ready for Contract Update${NC}"
+    echo "----------------------------------------"
     display_next_steps
 }
 
