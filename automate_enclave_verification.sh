@@ -26,7 +26,7 @@ cleanup() {
 trap cleanup EXIT
 
 # =============================================================================
-# DATA PROCESSING MODULE
+# EXTRACT ENCLAVE VALUES
 # =============================================================================
 
 check_report_file() {
@@ -82,7 +82,7 @@ extract_enclave_values() {
 }
 
 # =============================================================================
-# CONTRACT INTERACTION MODULE
+# CONTRACT INTERACTION
 # =============================================================================
 
 prepare_contract_interaction() {
@@ -313,7 +313,7 @@ run_contract_update() {
 }
 
 # =============================================================================
-# OUTPUT MODULE
+# OUTPUTS
 # =============================================================================
 
 show_usage() {
@@ -369,13 +369,11 @@ display_next_steps() {
 # MAIN LOGIC
 # =============================================================================
 
-# Function for full automation
 full_automation() {
     echo -e "${BLUE}🔍 Starting Full MR Enclave Update Automation${NC}"
     echo "======================================================="
-    echo ""
-    
-    # Data Processing Module
+    echo ""    
+
     echo -e "${BLUE}📋 Step 1/6: Processing Enclave Data${NC}"
     echo "----------------------------------------"
     check_report_file
@@ -383,26 +381,22 @@ full_automation() {
     decode_report_data
     echo ""
     
-    # Contract Interaction Module
     echo -e "${BLUE}📋 Step 2/6: Preparing Contract Interaction${NC}"
     echo "----------------------------------------"
     prepare_contract_interaction
     echo ""
-    
-    # User Interface Module
+
     echo -e "${BLUE}📋 Step 3/6: Ready for Contract Update${NC}"
     echo "----------------------------------------"
     display_next_steps
 }
 
-# Main execution logic
 main() {
     case "${1:-}" in
         --help|-h)
             show_usage
             ;;
         "")
-            # Clear workflow: Data → Contract → Results
             full_automation
             ask_contract_update
             ;;
@@ -415,5 +409,4 @@ main() {
     esac
 }
 
-# Run the main function
 main "$@" 
