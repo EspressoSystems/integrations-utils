@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# MR Enclave Verification Automation
+# MR Enclave Update Automation
 
 set -e
 
@@ -29,6 +29,18 @@ if [ -f ".env" ]; then
     export $(cat .env | grep -v '^#' | xargs)
     CONTRACT_ADDRESS=${TEE_SGX_ADDRESS:-""}
 fi
+
+# Cleanup function to remove intermediate files
+cleanup() {
+    if [ -f "${REPORT_BIN}" ] || [ -f "${REPORT_HEX}" ]; then
+        echo -e "${YELLOW}🧹 Cleaning up intermediate files...${NC}"
+        rm -f "${REPORT_BIN}" "${REPORT_HEX}"
+        echo -e "${GREEN}✅ Intermediate files cleaned up${NC}"
+    fi
+}
+
+# Set trap to cleanup on script exit (normal, error, or interruption)
+trap cleanup EXIT
 
 # Function to show usage
 show_usage() {
@@ -73,6 +85,7 @@ check_report_file() {
     
     # Display the content preview from the end
     echo -e "${BLUE}📋 Content preview (end of file):${NC}"
+    echo "...."
     tail -c 80 "${REPORT_FILE}"
     echo "..."
 }
@@ -336,12 +349,6 @@ run_contract_update() {
     echo ""
     echo -e "${YELLOW}⚠️  WARNING: Never share your private key and be careful with --private-key flag${NC}"
     echo -e "${YELLOW}💡 Replace YOUR_PRIVATE_KEY with the actual private key from Bitwarden${NC}"
-    
-    # Clean up intermediate files after we're completely done with everything
-    echo ""
-    echo -e "${YELLOW}🧹 Cleaning up intermediate files...${NC}"
-    rm -f "${REPORT_BIN}" "${REPORT_HEX}"
-    echo -e "${GREEN}✅ Intermediate files cleaned up${NC}"
 }
 
 # Main execution logic
