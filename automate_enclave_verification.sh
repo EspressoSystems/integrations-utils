@@ -18,6 +18,7 @@ REPORT_HEX="report.hex"
 
 # Environment variables for contract interaction
 CONTRACT_ADDRESS=${CONTRACT_ADDRESS:-""}
+PRIVATE_KEY=${PRIVATE_KEY:-""}
 ETHEREUM_MAINNET_RPC=${ETHEREUM_MAINNET_RPC:-"https://eth.llamarpc.com"}
 ARBITRUM_MAINNET_RPC=${ARBITRUM_MAINNET_RPC:-"https://arb1.arbitrum.io/rpc"}
 ETHEREUM_SEPOLIA_RPC=${ETHEREUM_SEPOLIA_RPC:-"https://rpc.sepolia.org"}
@@ -51,7 +52,6 @@ show_usage() {
     echo ""
     echo "Options:"
     echo "  (no args)  - Full automation with contract update"
-    echo "  --quick    - Quick parameter display only"
     echo "  --help     - Show this help"
     echo ""
     echo "Environment Variables:"
@@ -64,7 +64,6 @@ show_usage() {
     echo ""
     echo "Examples:"
     echo "  $0                    # Full automation with contract update"
-    echo "  $0 --quick           # Quick parameter display only"
     echo "  $0 --help            # Show help"
     echo ""
     echo "  # With .env file containing TEE_SGX_ADDRESS"
@@ -82,12 +81,6 @@ check_report_file() {
     fi
     
     echo -e "${GREEN}✅ Found report file: ${REPORT_FILE}${NC}"
-    
-    # Display the content preview from the end
-    echo -e "${BLUE}📋 Content preview (end of file):${NC}"
-    echo "...."
-    tail -c 80 "${REPORT_FILE}"
-    echo "..."
 }
 
 # Function to convert hex to binary
@@ -187,35 +180,10 @@ display_next_steps() {
     echo -e "${YELLOW}💡 All data has been saved to files for reference${NC}"
 }
 
-# Function for quick verification mode
-quick_verification() {
-    echo -e "${BLUE}⚡ Quick Verification Mode${NC}"
-    echo "================================"
-    
-    if [ -f "${REPORT_FILE}" ] && [ -f "${REPORT_BIN}" ]; then
-        if [ -x "./decode_report_data.sh" ]; then
-            echo -e "${GREEN}✅ Quick verification results:${NC}"
-            echo ""
-            ./decode_report_data.sh | grep -E "(MRENCLAVE|MRSIGNER)" | while read line; do
-                echo -e "✅ $line"
-            done
-            echo ""
-            echo -e "${BLUE}🔗 Function: setEnclaveHash (0x93b5552e)${NC}"
-            echo -e "${BLUE}📋 enclaveHash: 0x$(./decode_report_data.sh | grep "MRENCLAVE:" | cut -d' ' -f2)${NC}"
-            echo -e "${BLUE}📋 valid: true${NC}"
-        else
-            echo -e "${YELLOW}⚠️  decode_report_data.sh not found or not executable${NC}"
-        fi
-    else
-        echo -e "${YELLOW}⚠️  Required files not found. Run full automation first.${NC}"
-        echo -e "${YELLOW}💡 Use: $0 (no arguments) for full processing${NC}"
-    fi
-}
-
 # Function for full automation
 full_automation() {
-    echo -e "${BLUE}🔍 Starting Full Enclave Verification Automation${NC}"
-    echo "=================================================="
+    echo -e "${BLUE}🔍 Starting Full MR Enclave Update Automation${NC}"
+    echo "======================================================="
     
     check_report_file
     convert_to_binary
@@ -349,14 +317,40 @@ run_contract_update() {
     echo ""
     echo -e "${YELLOW}⚠️  WARNING: Never share your private key and be careful with --private-key flag${NC}"
     echo -e "${YELLOW}💡 Replace YOUR_PRIVATE_KEY with the actual private key from Bitwarden${NC}"
+    
+    # Check if private key is set in environment
+    if [ -n "${PRIVATE_KEY}" ]; then
+        echo ""
+        echo -e "${GREEN}🔑 Private key found in environment${NC}"
+        echo -e "${BLUE}📋 Ready to execute:${NC}"
+        echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key ${PRIVATE_KEY:0:10}..."
+        echo ""
+        echo -e "${YELLOW}⚠️  This will actually update the contract on ${NETWORK}${NC}"
+        read -p "Are you ready to execute this command? (y/n): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo -e "${YELLOW}🚀 Executing contract update...${NC}"
+            echo ""
+            if cast send "${CONTRACT_ADDRESS}" "setEnclaveHash(bytes32,bool)" "0x${MRENCLAVE}" true --rpc-url "${RPC_URL}" --private-key "${PRIVATE_KEY}"; then
+                echo -e "${GREEN}✅ Contract update successful!${NC}"
+                echo -e "${GREEN}🎉 The enclave hash has been updated on ${NETWORK}${NC}"
+            else
+                echo -e "${RED}❌ Contract update failed${NC}"
+                echo -e "${YELLOW}💡 Check the error message above for details${NC}"
+            fi
+        else
+            echo -e "${YELLOW}💡 Command execution cancelled. You can run it manually later.${NC}"
+        fi
+    else
+        echo ""
+        echo -e "${YELLOW}💡 To execute automatically, set PRIVATE_KEY in your .env file${NC}"
+        echo -e "${YELLOW}💡 Or run the command manually with your private key${NC}"
+    fi
 }
 
 # Main execution logic
 main() {
     case "${1:-}" in
-        --quick)
-            quick_verification
-            ;;
         --help|-h)
             show_usage
             ;;
