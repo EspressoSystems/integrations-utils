@@ -16,22 +16,48 @@ REPORT_FILE="report.txt"
 REPORT_BIN="report.bin"
 REPORT_HEX="report.hex"
 
+# Environment variables for contract interaction
+CONTRACT_ADDRESS=${CONTRACT_ADDRESS:-""}
+ETHEREUM_MAINNET_RPC=${ETHEREUM_MAINNET_RPC:-"https://eth.llamarpc.com"}
+ARBITRUM_MAINNET_RPC=${ARBITRUM_MAINNET_RPC:-"https://arb1.arbitrum.io/rpc"}
+ETHEREUM_SEPOLIA_RPC=${ETHEREUM_SEPOLIA_RPC:-"https://rpc.sepolia.org"}
+ARBITRUM_SEPOLIA_RPC=${ARBITRUM_SEPOLIA_RPC:-"https://sepolia-rollup.arbitrum.io/rpc"}
+
+# Load environment variables if .env file exists
+if [ -f ".env" ]; then
+    echo -e "${BLUE}📋 Loading environment variables from .env file${NC}"
+    export $(cat .env | grep -v '^#' | xargs)
+    CONTRACT_ADDRESS=${TEE_SGX_ADDRESS:-""}
+fi
+
 # Function to show usage
 show_usage() {
-    echo -e "${BLUE}🔍 Enclave Verification Automation${NC}"
-    echo "========================================"
+    echo -e "${BLUE}🔍 MR Enclave Update Automation${NC}"
+    echo "============================================="
     echo ""
     echo "Usage: $0 [OPTION]"
     echo ""
     echo "Options:"
-    echo "  (no args)  - Full automation (recommended)"
-    echo "  --quick    - Quick verification only"
+    echo "  (no args)  - Full automation with contract update"
+    echo "  --quick    - Quick parameter display only"
     echo "  --help     - Show this help"
     echo ""
+    echo "Environment Variables:"
+    echo "  TEE_SGX_ADDRESS      - Contract address for update (.env file)"
+    echo "  PRIVATE_KEY          - Private key for contract owner (optional, will prompt if not set)"
+    echo "  ETHEREUM_MAINNET_RPC - Ethereum mainnet RPC URL"
+    echo "  ARBITRUM_MAINNET_RPC - Arbitrum mainnet RPC URL"
+    echo "  ETHEREUM_SEPOLIA_RPC - Ethereum Sepolia RPC URL"
+    echo "  ARBITRUM_SEPOLIA_RPC - Arbitrum Sepolia RPC URL"
+    echo ""
     echo "Examples:"
-    echo "  $0                    # Full automation"
-    echo "  $0 --quick           # Quick check only"
+    echo "  $0                    # Full automation with contract update"
+    echo "  $0 --quick           # Quick parameter display only"
     echo "  $0 --help            # Show help"
+    echo ""
+    echo "  # With .env file containing TEE_SGX_ADDRESS"
+    echo "  cp env.template .env  # Copy template and edit"
+    echo "  $0                    # Run automation"
 }
 
 # Function to check if report file exists
@@ -81,7 +107,7 @@ decode_report_data() {
 
 # Function to prepare SGX TEE contract interaction
 prepare_contract_interaction() {
-    echo -e "${YELLOW}🔗 Preparing contract interaction...${NC}"
+    echo -e "${YELLOW}🔗 Preparing contract update...${NC}"
     
     # Extract the MRENCLAVE value from the decode output
     MRENCLAVE=$(./decode_report_data.sh | grep "MRENCLAVE:" | cut -d' ' -f2)
@@ -94,10 +120,9 @@ prepare_contract_interaction() {
     
     echo -e "${GREEN}✅ MRENCLAVE extracted: ${MRENCLAVE}${NC}"
     echo -e "${GREEN}✅ MRSIGNER extracted: ${MRSIGNER}${NC}"
-
+    
     # Create a summary file for easy reference
     cat > enclave_verification_summary.txt << EOF
-
 MR Enclave Summary
 ===============================
 
@@ -110,7 +135,7 @@ Processed Data:
 - MRENCLAVE: ${MRENCLAVE}
 - MRSIGNER: ${MRSIGNER}
 
-Contract Interaction:
+Contract Update:
 - Contract Function: setEnclaveHash (0x93b5552e)
 - Parameters:
   * enclaveHash: 0x${MRENCLAVE}
@@ -124,11 +149,6 @@ Next Steps:
 EOF
 
     echo -e "${GREEN}✅ Summary saved to: enclave_verification_summary.txt${NC}"
-    
-    # Clean up intermediate files
-    echo -e "${YELLOW}🧹 Cleaning up intermediate files...${NC}"
-    rm -f "${REPORT_BIN}" "${REPORT_HEX}"
-    echo -e "${GREEN}✅ Intermediate files cleaned up${NC}"
 }
 
 # Function to display next steps
@@ -138,13 +158,18 @@ display_next_steps() {
     echo "========================================"
     echo -e "${BLUE}📋 Next Steps:${NC}"
     echo "1. Review the enclave verification summary"
-    echo "2. Go to Etherscan/Arbiscan"
-    echo "3. Navigate to the TEE verifier contract:"
-    echo "   - EspressoSGXVerifier (for SGX infrastructure)"
-    echo "4. Connect with the owner wallet accessible from bitwarden"
-    echo "5. Call setEnclaveHash function with:"
-    echo "   - enclaveHash: 0x${MRENCLAVE}"
-    echo "   - valid: true"
+    echo ""
+    echo -e "${YELLOW}🔗 Option 1: Use the script (recommended)${NC}"
+    echo "   - Continue with the script to get the contract owner and update command"
+    echo "   - This will show you exactly what to run"
+    echo ""
+    echo -e "${YELLOW}🔗 Option 2: Manual update via Etherscan/Arbiscan${NC}"
+    echo "   - Go to Etherscan/Arbiscan"
+    echo "   - Navigate to the EspressoSGXVerifier verifier contract:"
+    echo "   - Connect with the owner wallet accessible from Bitwarden"
+    echo "   - Call setEnclaveHash function with:"
+    echo "     * enclaveHash: 0x${MRENCLAVE}"
+    echo "     * valid: true"
     echo ""
     echo -e "${YELLOW}💡 All data has been saved to files for reference${NC}"
 }
@@ -186,6 +211,139 @@ full_automation() {
     display_next_steps
 }
 
+# Function to ask user about contract update
+ask_contract_update() {
+    echo ""
+    echo -e "${YELLOW}🔗 Contract Update Setup${NC}"
+    echo "==============================="
+    
+    if [ -z "${CONTRACT_ADDRESS}" ]; then
+        echo -e "${YELLOW}⚠️  No contract address specified in TEE_SGX_ADDRESS environment variable${NC}"
+        echo -e "${YELLOW}💡 Create a .env file from env.template and set TEE_SGX_ADDRESS${NC}"
+        read -p "Would you like to specify a contract address now? (y/n): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            read -p "Enter contract address: " CONTRACT_ADDRESS
+        fi
+    fi
+    
+    if [ -n "${CONTRACT_ADDRESS}" ]; then
+        echo -e "${GREEN}✅ Contract address: ${CONTRACT_ADDRESS}${NC}"
+        
+        echo -e "${BLUE}📋 Available RPC endpoints:${NC}"
+        echo "1. Ethereum Mainnet: ${ETHEREUM_MAINNET_RPC}"
+        echo "2. Arbitrum Mainnet: ${ARBITRUM_MAINNET_RPC}"
+        echo "3. Ethereum Sepolia: ${ETHEREUM_SEPOLIA_RPC}"
+        echo "4. Arbitrum Sepolia: ${ARBITRUM_SEPOLIA_RPC}"
+        echo "5. Custom RPC"
+        
+        read -p "Select RPC endpoint (1/2/3/4/5): " -n 1 -r
+        echo
+        
+        case $REPLY in
+            1)
+                RPC_URL="${ETHEREUM_MAINNET_RPC}"
+                NETWORK="Ethereum Mainnet"
+                ;;
+            2)
+                RPC_URL="${ARBITRUM_MAINNET_RPC}"
+                NETWORK="Arbitrum Mainnet"
+                ;;
+            3)
+                RPC_URL="${ETHEREUM_SEPOLIA_RPC}"
+                NETWORK="Ethereum Sepolia"
+                ;;
+            4)
+                RPC_URL="${ARBITRUM_SEPOLIA_RPC}"
+                NETWORK="Arbitrum Sepolia"
+                ;;
+            5)
+                read -p "Enter custom RPC URL: " RPC_URL
+                NETWORK="Custom"
+                ;;
+            *)
+                echo -e "${YELLOW}⚠️  Invalid selection, skipping contract setup${NC}"
+                return
+                ;;
+        esac
+        
+        echo -e "${GREEN}✅ Selected: ${NETWORK} - ${RPC_URL}${NC}"
+        
+        # Run the contract update function which includes owner check
+        run_contract_update
+        
+    else
+        echo -e "${YELLOW}💡 No contract address provided, skipping contract setup${NC}"
+    fi
+}
+
+# Function to run contract update
+run_contract_update() {
+    echo -e "${YELLOW}🚀 Contract Update Command${NC}"
+    echo "==============================="
+    
+    # Extract MRENCLAVE for the call
+    MRENCLAVE=$(./decode_report_data.sh | grep "MRENCLAVE:" | cut -d' ' -f2)
+    
+    echo -e "${BLUE}📋 Contract Call Details:${NC}"
+    echo "Network: ${NETWORK}"
+    echo "Contract: ${CONTRACT_ADDRESS}"
+    echo "Function: setEnclaveHash (0x93b5552e)"
+    echo "Parameters:"
+    echo "  - enclaveHash: 0x${MRENCLAVE}"
+    echo "  - valid: true"
+    echo ""
+    
+    # Ask if they want to get the TEE contract owner address
+    read -p "Would you like to get the TEE contract owner address? (y/n): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}🔄 Getting contract owner...${NC}"
+        echo ""
+        
+        if cast call "${CONTRACT_ADDRESS}" "owner()" --rpc-url "${RPC_URL}" 2>/dev/null; then
+            OWNER_ADDRESS=$(cast call "${CONTRACT_ADDRESS}" "owner()" --rpc-url "${RPC_URL}" 2>/dev/null)
+            echo -e "${GREEN}✅ Contract owner: ${OWNER_ADDRESS}${NC}"
+            echo -e "${YELLOW}💡 Look for this address in Bitwarden to find the private key${NC}"
+        else
+            echo -e "${RED}❌ Failed to get contract owner. Check contract address and RPC.${NC}"
+            echo -e "${YELLOW}💡 Common issues:${NC}"
+            echo "   - Contract address is incorrect"
+            echo "   - RPC endpoint is invalid or not responding"
+            echo ""
+            echo -e "${YELLOW}💡 Would you like to install 'cast' (Foundry's command-line tool)?${NC}"
+            echo "This is required for contract interaction."
+            read -p "Install cast now? (y/n): " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                echo -e "${BLUE}📋 Downloading Foundry...${NC}"
+                curl -L https://foundry.paradigm.xyz | bash
+                echo -e "${GREEN}✅ Foundry downloaded.${NC}"
+                echo -e "${BLUE}📋 Installing Foundry...${NC}"
+                foundryup
+                echo -e "${GREEN}✅ Foundry installed.${NC}"
+                echo -e "${YELLOW}💡 You can now run the script again to get the contract owner.${NC}"
+            else
+                echo -e "${YELLOW}💡 You can manually install 'cast' later by following the instructions on Foundry's website.${NC}"
+            fi
+        fi
+        echo ""
+    fi
+    
+    # Show the complete command that will work
+    echo -e "${BLUE}📋 Complete command to update the contract:${NC}"
+    echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key YOUR_PRIVATE_KEY"
+    echo ""
+    echo -e "${YELLOW}⚠️  WARNING: Never share your private key and be careful with --private-key flag${NC}"
+    echo -e "${YELLOW}💡 Replace YOUR_PRIVATE_KEY with the actual private key from Bitwarden${NC}"
+    
+    # Clean up intermediate files after we're completely done with everything
+    echo ""
+    echo -e "${YELLOW}🧹 Cleaning up intermediate files...${NC}"
+    rm -f "${REPORT_BIN}" "${REPORT_HEX}"
+    echo -e "${GREEN}✅ Intermediate files cleaned up${NC}"
+}
+
 # Main execution logic
 main() {
     case "${1:-}" in
@@ -197,6 +355,7 @@ main() {
             ;;
         "")
             full_automation
+            ask_contract_update
             ;;
         *)
             echo -e "${RED}❌ Unknown option: $1${NC}"
