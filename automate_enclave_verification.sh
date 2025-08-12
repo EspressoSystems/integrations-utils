@@ -3,35 +3,34 @@
 # MR Enclave Update Automation
 
 set -e
-
-# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Configuration
 REPORT_FILE="report.txt"
 REPORT_BIN="report.bin"
 REPORT_HEX="report.hex"
 
-# Environment variables for contract interaction
+
+declare MRENCLAVE MRSIGNER CONTRACT_ADDRESS RPC_URL NETWORK
+
+# Environment variables
 CONTRACT_ADDRESS=${CONTRACT_ADDRESS:-""}
 PRIVATE_KEY=${PRIVATE_KEY:-""}
-ETHEREUM_MAINNET_RPC=${ETHEREUM_MAINNET_RPC:-"https://eth.llamarpc.com"}
-ARBITRUM_MAINNET_RPC=${ARBITRUM_MAINNET_RPC:-"https://arb1.arbitrum.io/rpc"}
-ETHEREUM_SEPOLIA_RPC=${ETHEREUM_SEPOLIA_RPC:-"https://rpc.sepolia.org"}
-ARBITRUM_SEPOLIA_RPC=${ARBITRUM_SEPOLIA_RPC:-"https://sepolia-rollup.arbitrum.io/rpc"}
+ETHEREUM_MAINNET_RPC=${ETHEREUM_MAINNET_RPC:-""}
+ARBITRUM_MAINNET_RPC=${ARBITRUM_MAINNET_RPC:-""}
+ETHEREUM_SEPOLIA_RPC=${ETHEREUM_SEPOLIA_RPC:-""}
+ARBITRUM_SEPOLIA_RPC=${ARBITRUM_SEPOLIA_RPC:-""}
 
-# Load environment variables if .env file exists
+# Load environment variables
 if [ -f ".env" ]; then
     echo -e "${BLUE}📋 Loading environment variables from .env file${NC}"
     export $(cat .env | grep -v '^#' | xargs)
     CONTRACT_ADDRESS=${TEE_SGX_ADDRESS:-""}
 fi
 
-# Cleanup function to remove intermediate files
 cleanup() {
     if [ -f "${REPORT_BIN}" ] || [ -f "${REPORT_HEX}" ]; then
         echo -e "${YELLOW}🧹 Cleaning up intermediate files...${NC}"
@@ -40,36 +39,11 @@ cleanup() {
     fi
 }
 
-# Set trap to cleanup on script exit (normal, error, or interruption)
 trap cleanup EXIT
 
-# Function to show usage
-show_usage() {
-    echo -e "${BLUE}🔍 MR Enclave Update Automation${NC}"
-    echo "============================================="
-    echo ""
-    echo "Usage: $0 [OPTION]"
-    echo ""
-    echo "Options:"
-    echo "  (no args)  - Full automation with contract update"
-    echo "  --help     - Show this help"
-    echo ""
-    echo "Environment Variables:"
-    echo "  TEE_SGX_ADDRESS      - Contract address for update (.env file)"
-    echo "  PRIVATE_KEY          - Private key for contract owner (optional, will prompt if not set)"
-    echo "  ETHEREUM_MAINNET_RPC - Ethereum mainnet RPC URL"
-    echo "  ARBITRUM_MAINNET_RPC - Arbitrum mainnet RPC URL"
-    echo "  ETHEREUM_SEPOLIA_RPC - Ethereum Sepolia RPC URL"
-    echo "  ARBITRUM_SEPOLIA_RPC - Arbitrum Sepolia RPC URL"
-    echo ""
-    echo "Examples:"
-    echo "  $0                    # Full automation with contract update"
-    echo "  $0 --help            # Show help"
-    echo ""
-    echo "  # With .env file containing TEE_SGX_ADDRESS"
-    echo "  cp env.template .env  # Copy template and edit"
-    echo "  $0                    # Run automation"
-}
+# =============================================================================
+# DATA PROCESSING MODULE
+# =============================================================================
 
 # Function to check if report file exists
 check_report_file() {
@@ -111,9 +85,9 @@ decode_report_data() {
     fi
 }
 
-# Function to prepare SGX TEE contract interaction
-prepare_contract_interaction() {
-    echo -e "${YELLOW}🔗 Preparing contract update...${NC}"
+# Function to extract enclave values
+extract_enclave_values() {
+    echo -e "${YELLOW}🔍 Extracting enclave values...${NC}"
     
     # Extract the MRENCLAVE value from the decode output
     MRENCLAVE=$(./decode_report_data.sh | grep "MRENCLAVE:" | cut -d' ' -f2)
@@ -126,6 +100,18 @@ prepare_contract_interaction() {
     
     echo -e "${GREEN}✅ MRENCLAVE extracted: ${MRENCLAVE}${NC}"
     echo -e "${GREEN}✅ MRSIGNER extracted: ${MRSIGNER}${NC}"
+}
+
+# =============================================================================
+# CONTRACT INTERACTION MODULE
+# =============================================================================
+
+# Function to prepare SGX TEE contract interaction
+prepare_contract_interaction() {
+    echo -e "${YELLOW}🔗 Preparing contract update...${NC}"
+    
+    # Extract enclave values first
+    extract_enclave_values
     
     # Create a summary file for easy reference
     cat > enclave_verification_summary.txt << EOF
@@ -155,41 +141,6 @@ Next Steps:
 EOF
 
     echo -e "${GREEN}✅ Summary saved to: enclave_verification_summary.txt${NC}"
-}
-
-# Function to display next steps
-display_next_steps() {
-    echo ""
-    echo -e "${GREEN}🎉 Automation Complete!${NC}"
-    echo "========================================"
-    echo -e "${BLUE}📋 Next Steps:${NC}"
-    echo "1. Review the enclave verification summary"
-    echo ""
-    echo -e "${YELLOW}🔗 Option 1: Use the script (recommended)${NC}"
-    echo "   - Continue with the script to get the contract owner and update command"
-    echo "   - This will show you exactly what to run"
-    echo ""
-    echo -e "${YELLOW}🔗 Option 2: Manual update via Etherscan/Arbiscan${NC}"
-    echo "   - Go to Etherscan/Arbiscan"
-    echo "   - Navigate to the EspressoSGXVerifier verifier contract:"
-    echo "   - Connect with the owner wallet accessible from Bitwarden"
-    echo "   - Call setEnclaveHash function with:"
-    echo "     * enclaveHash: 0x${MRENCLAVE}"
-    echo "     * valid: true"
-    echo ""
-    echo -e "${YELLOW}💡 All data has been saved to files for reference${NC}"
-}
-
-# Function for full automation
-full_automation() {
-    echo -e "${BLUE}🔍 Starting Full MR Enclave Update Automation${NC}"
-    echo "======================================================="
-    
-    check_report_file
-    convert_to_binary
-    decode_report_data
-    prepare_contract_interaction
-    display_next_steps
 }
 
 # Function to ask user about contract update
@@ -263,8 +214,10 @@ run_contract_update() {
     echo -e "${YELLOW}🚀 Contract Update Command${NC}"
     echo "==============================="
     
-    # Extract MRENCLAVE for the call
-    MRENCLAVE=$(./decode_report_data.sh | grep "MRENCLAVE:" | cut -d' ' -f2)
+    # Extract MRENCLAVE for the call (in case it wasn't set)
+    if [ -z "${MRENCLAVE}" ]; then
+        MRENCLAVE=$(./decode_report_data.sh | grep "MRENCLAVE:" | cut -d' ' -f2)
+    fi
     
     echo -e "${BLUE}📋 Contract Call Details:${NC}"
     echo "Network: ${NETWORK}"
@@ -283,7 +236,7 @@ run_contract_update() {
         echo ""
         
         if cast call "${CONTRACT_ADDRESS}" "owner()" --rpc-url "${RPC_URL}" 2>/dev/null; then
-            OWNER_ADDRESS=$(cast call "${CONTRACT_ADDRESS}" "owner()" --rpc-url "${RPC_URL}" 2>/dev/null)
+            OWNER_ADDRESS=$(cast call "${CONTRACT_ADDRESS}" "owner()" --rpc-url "${RPC_URL}" 2>/dev/null | sed 's/^0x000000000000000000000000/0x/' 2>/dev/null)
             echo -e "${GREEN}✅ Contract owner: ${OWNER_ADDRESS}${NC}"
             echo -e "${YELLOW}💡 Look for this address in Bitwarden to find the private key${NC}"
         else
@@ -348,6 +301,82 @@ run_contract_update() {
     fi
 }
 
+# =============================================================================
+# OUTPUT MODULE
+# =============================================================================
+
+# Function to show usage
+show_usage() {
+    echo -e "${BLUE}🔍 MR Enclave Update Automation${NC}"
+    echo "============================================="
+    echo ""
+    echo "Usage: $0 [OPTION]"
+    echo ""
+    echo "Options:"
+    echo "  (no args)  - Full automation with contract update"
+    echo "  --help     - Show this help"
+    echo ""
+    echo "Environment Variables:"
+    echo "  TEE_SGX_ADDRESS      - Contract address for update (.env file)"
+    echo "  PRIVATE_KEY          - Private key for contract owner (optional, will prompt if not set)"
+    echo "  ETHEREUM_MAINNET_RPC - Ethereum mainnet RPC URL"
+    echo "  ARBITRUM_MAINNET_RPC - Arbitrum mainnet RPC URL"
+    echo "  ETHEREUM_SEPOLIA_RPC - Ethereum Sepolia RPC URL"
+    echo "  ARBITRUM_SEPOLIA_RPC - Arbitrum Sepolia RPC URL"
+    echo ""
+    echo "Examples:"
+    echo "  $0                    # Full automation with contract update"
+    echo "  $0 --help            # Show help"
+    echo ""
+    echo "  # With .env file containing TEE_SGX_ADDRESS"
+    echo "  cp env.template .env  # Copy template and edit"
+    echo "  $0                    # Run automation"
+}
+
+# Function to display next steps
+display_next_steps() {
+    echo ""
+    echo -e "${GREEN}🎉 Automation Complete!${NC}"
+    echo "========================================"
+    echo -e "${BLUE}📋 Next Steps:${NC}"
+    echo "1. Review the enclave verification summary"
+    echo ""
+    echo -e "${YELLOW}🔗 Option 1: Use the script (recommended)${NC}"
+    echo "   - Continue with the script to get the contract owner and update command"
+    echo "   - This will show you exactly what to run"
+    echo ""
+    echo -e "${YELLOW}🔗 Option 2: Manual update via Etherscan/Arbiscan${NC}"
+    echo "   - Go to Etherscan/Arbiscan"
+    echo "   - Navigate to the EspressoSGXVerifier verifier contract:"
+    echo "   - Connect with the owner wallet accessible from Bitwarden"
+    echo "   - Call setEnclaveHash function with:"
+    echo "     * enclaveHash: 0x${MRENCLAVE}"
+    echo "     * valid: true"
+    echo ""
+    echo -e "${YELLOW}💡 All data has been saved to files for reference${NC}"
+}
+
+# =============================================================================
+# MAIN LOGIC
+# =============================================================================
+
+# Function for full automation
+full_automation() {
+    echo -e "${BLUE}🔍 Starting Full MR Enclave Update Automation${NC}"
+    echo "======================================================="
+    
+    # Data Processing Module
+    check_report_file
+    convert_to_binary
+    decode_report_data
+    
+    # Contract Interaction Module
+    prepare_contract_interaction
+    
+    # User Interface Module
+    display_next_steps
+}
+
 # Main execution logic
 main() {
     case "${1:-}" in
@@ -355,6 +384,7 @@ main() {
             show_usage
             ;;
         "")
+            # Clear workflow: Data → Contract → Results
             full_automation
             ask_contract_update
             ;;
