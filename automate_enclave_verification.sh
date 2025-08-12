@@ -148,17 +148,8 @@ get_contract_address() {
     fi
 }
 
-# Function to ask user about contract update
-ask_contract_update() {
-    echo ""
-    echo -e "${YELLOW}🔗 Contract Update Setup${NC}"
-    echo "==============================="
-    
-    # Get contract address first
-    if ! get_contract_address; then
-        return
-    fi
-    
+# Function to select network and RPC endpoint
+select_network_rpc() {
     echo -e "${BLUE}📋 Available RPC endpoints:${NC}"
     echo "1. Ethereum Mainnet: ${ETHEREUM_MAINNET_RPC}"
     echo "2. Arbitrum Mainnet: ${ARBITRUM_MAINNET_RPC}"
@@ -192,11 +183,29 @@ ask_contract_update() {
             ;;
         *)
             echo -e "${YELLOW}⚠️  Invalid selection, skipping contract setup${NC}"
-            return
+            return 1
             ;;
     esac
     
     echo -e "${GREEN}✅ Selected: ${NETWORK} - ${RPC_URL}${NC}"
+    return 0
+}
+
+# Function to ask user about contract update
+ask_contract_update() {
+    echo ""
+    echo -e "${YELLOW}🔗 Contract Update Setup${NC}"
+    echo "==============================="
+    
+    # Get contract address first
+    if ! get_contract_address; then
+        return
+    fi
+    
+    # Select network and RPC endpoint
+    if ! select_network_rpc; then
+        return
+    fi
     
     # Run the contract update function which includes owner check
     run_contract_update
@@ -332,7 +341,7 @@ display_next_steps() {
     echo -e "${GREEN}🎉 Automation Complete!${NC}"
     echo "========================================"
     echo -e "${BLUE}📋 Next Steps:${NC}"
-    echo "1. Review the enclave verification summary"
+    echo "Review the enclave verification summary"
     echo ""
     echo -e "${YELLOW}🔗 Option 1: Use the script (recommended)${NC}"
     echo "   - Continue with the script to get the contract owner and update command"
