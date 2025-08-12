@@ -3,28 +3,12 @@
 # MR Enclave Update Automation
 
 set -e
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
 
-REPORT_FILE="report.txt"
-REPORT_BIN="report.bin"
-REPORT_HEX="report.hex"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/config.sh"
 
+declare MRENCLAVE MRSIGNER RPC_URL NETWORK
 
-declare MRENCLAVE MRSIGNER CONTRACT_ADDRESS RPC_URL NETWORK
-
-# Environment variables
-CONTRACT_ADDRESS=${CONTRACT_ADDRESS:-""}
-PRIVATE_KEY=${PRIVATE_KEY:-""}
-ETHEREUM_MAINNET_RPC=${ETHEREUM_MAINNET_RPC:-""}
-ARBITRUM_MAINNET_RPC=${ARBITRUM_MAINNET_RPC:-""}
-ETHEREUM_SEPOLIA_RPC=${ETHEREUM_SEPOLIA_RPC:-""}
-ARBITRUM_SEPOLIA_RPC=${ARBITRUM_SEPOLIA_RPC:-""}
-
-# Load environment variables
 if [ -f ".env" ]; then
     echo -e "${BLUE}📋 Loading environment variables from .env file${NC}"
     export $(cat .env | grep -v '^#' | xargs)
