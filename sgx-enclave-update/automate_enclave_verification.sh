@@ -237,7 +237,7 @@ display_update_command() {
     echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key YOUR_PRIVATE_KEY"
     echo ""
     echo -e "${YELLOW}⚠️  WARNING: Never share your private key and be careful with --private-key flag${NC}"
-    echo -e "${YELLOW}💡 Replace YOUR_PRIVATE_KEY with the actual private key from Bitwarden${NC}"
+    echo -e "${YELLOW}💡 Replace YOUR_PRIVATE_KEY with the actual private key${NC}"
 }
 
 execute_contract_update() {

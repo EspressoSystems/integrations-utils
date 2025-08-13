@@ -20,6 +20,7 @@ This folder contains tools for processing MR enclave data and updating an existi
 ## Setup
 
 1. **Copy the environment template:**
+
    ```bash
    cp env.template .env
    ```
@@ -52,11 +53,13 @@ This folder contains tools for processing MR enclave data and updating an existi
 ## Generated Files
 
 When you run the automation, this file will be created:
+
 - `enclave_verification_summary.txt` - Complete summary for contract update
 
 ## Network Options
 
 The script supports 4 networks:
+
 1. **Ethereum Mainnet** - Production Ethereum
 2. **Arbitrum Mainnet** - Production Arbitrum
 3. **Ethereum Sepolia** - Testnet Ethereum
@@ -65,6 +68,7 @@ The script supports 4 networks:
 ## Contract Update Process
 
 The script will:
+
 - **Process enclave data** - Extract MRENCLAVE and MRSIGNER values
 - **Show contract owner** - Display the owner address from the existing contract
 - **Display complete command** - Show the exact cast command to update the contract
@@ -85,12 +89,3 @@ cp env.template .env
 
 # Show help
 ./automate_enclave_verification.sh --help
-```
-
-## Requirements
-
-- `xxd` - For hex-to-binary conversion
-- `cast` (optional) - For contract interaction (install Foundry)
-- `.env` file - For existing contract address and RPC configuration
-- Bitwarden access - For owner private key
-- **Existing contract** - The TEE contract must already be deployed
