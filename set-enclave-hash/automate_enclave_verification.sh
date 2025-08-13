@@ -82,6 +82,122 @@ extract_enclave_values() {
 }
 
 # =============================================================================
+# AWS NITRO — COMPUTE PCR0 KECCAK FROM REMOTE BUILD
+# =============================================================================
+
+require_cmd() {
+    command -v "$1" >/dev/null 2>&1 || {
+        echo -e "${RED}❌ Missing required command: $1${NC}";
+        return 1;
+    }
+}
+
+generate_nitro_pcr0_remote() {
+    echo -e "${YELLOW}🔧 Generating AWS Nitro PCR0 via GitHub Action${NC}"
+    require_cmd gh || {
+        echo -e "${RED}❌ GitHub CLI (gh) required. Install via:${NC}"
+        echo "  brew install gh  # macOS"
+        echo "  Or https://cli.github.com/"
+        return 1
+    }
+    require_cmd cast || return 1
+
+    if ! gh auth status &>/dev/null; then
+        echo -e "${RED}❌ Not logged in to GitHub. Run:${NC}"
+        echo "  gh auth login"
+        return 1
+    fi
+
+    local nitro_tag
+    read -p "Enter Nitro node tag (e.g. pr-689): " nitro_tag
+    nitro_tag="${nitro_tag:-latest}"
+
+    local enclaver_image_name
+    read -p "Enter Enclaver image name (e.g. test): " enclaver_image_name
+    enclaver_image_name="${enclaver_image_name:-test}"
+
+    echo -e "${BLUE}📦 Triggering workflow in EspressoSystems/aws-nitro...${NC}"
+
+    echo -e "${BLUE}⏳ Running workflow and capturing run ID...${NC}"
+    gh workflow run "Build Enclaver Docker Image" \
+        --repo EspressoSystems/aws-nitro \
+        -F nitro_node_image_tag="$nitro_tag" \
+        -F enclaver_image_name="$enclaver_image_name" \
+        -F config_hash="0000000000000000000000000000000000000000000000000000000000000000"
+
+
+    echo "Enclaver Image Name: Build Enclaver Docker Image - $enclaver_image_name"
+
+    sleep 5
+
+    run_list=$(gh run list --repo EspressoSystems/aws-nitro --workflow="Build Enclaver Docker Image" --json databaseId,displayTitle)
+
+    run_id=$(echo "$run_list" | jq --arg name "$enclaver_image_name" '.[] | select(.displayTitle | contains($name)) | .databaseId' | head -n 1) || {
+        echo -e "${RED}❌ Failed to get workflow run ID${NC}"
+        return 1
+    }
+
+    if [ -z "$run_id" ]; then
+        echo -e "${RED}❌ No valid run ID found${NC}"
+        return 1
+    fi
+    echo "Retrieved run ID: $run_id"
+
+    gh repo set-default EspressoSystems/aws-nitro || {
+        echo -e "${RED}❌ Failed to set default repository for gh CLI${NC}"
+        return 1
+    }
+
+    echo -e "${BLUE}📋 Waiting for workflow to complete...${NC}"
+    local run_log keccak_line keccak_hash status
+    keccak_hash=""
+    while true; do
+        sleep 5
+        run_log=$(gh run view "$run_id" --repo EspressoSystems/aws-nitro --log 2>/dev/null || echo "")
+
+        if [ -z "$keccak_hash" ]; then
+            keccak_line=$(echo "$run_log" | grep -E 'PCR0 keccak hash: 0x[0-9a-fA-F]+' | tail -n1)
+
+            if [ -n "$keccak_line" ]; then
+                keccak_hash=$(echo "$keccak_line" | sed -n 's/.*PCR0 keccak hash: \(0x[0-9a-fA-F]*\).*/\1/p')
+            fi
+        fi
+
+        run_info=$(gh run view "$run_id" --repo EspressoSystems/aws-nitro --json status 2>/dev/null || echo "")
+        status=$(echo "$run_info" | jq -r '.status')
+
+        if [ "$status" = "completed" ]; then
+            echo -e "${GREEN}✅ Workflow completed${NC}"
+            break
+        fi
+        if echo "$run_log" | grep -q "Run failed"; then
+            echo -e "${RED}❌ Workflow failed before keccak was printed${NC}"
+            return 1
+        fi
+    done
+    if [ -z "$keccak_hash" ]; then
+        echo -e "${RED}❌ Could not extract PCR0 from workflow logs${NC}"
+        return 1
+    fi
+
+    echo -e "${GREEN}✅ PCR0 keccak captured${NC}"
+    echo "PCR0 keccak hash: ${keccak_hash}"
+
+    cat > nitro_pcr0_summary.txt << EOF
+
+AWS Nitro PCR0 Summary
+===============================
+
+Timestamp: $(date)
+
+Computed:
+- PCR0 keccak hash: ${keccak_hash}
+EOF
+
+    echo -e "${GREEN}✅ Summary saved to: nitro_pcr0_summary.txt${NC}"
+}
+
+# =============================================================================
 # CONTRACT INTERACTION
 # =============================================================================
 
@@ -90,7 +206,7 @@ prepare_contract_interaction() {
     
     extract_enclave_values
     
-    cat > enclave_verification_summary.txt << EOF
+    cat > sgx_enclave_summary.txt << EOF
 
 MR Enclave Summary
 ===============================
@@ -117,7 +233,7 @@ Next Steps:
 4. Call setEnclaveHash function with the above parameters
 EOF
 
-    echo -e "${GREEN}✅ Summary saved to: enclave_verification_summary.txt${NC}"
+    echo -e "${GREEN}✅ Summary saved to: sgx_enclave_summary.txt${NC}"
 }
 
 get_contract_address() {
@@ -397,8 +513,21 @@ main() {
             show_usage
             ;;
         "")
-            full_automation
-            ask_contract_update
+            echo -e "${BLUE}📋 Choose TEE type:${NC}"
+            echo "1) Intel SGX"
+            echo "2) AWS Nitro"
+            read -p "Select (1/2): " -n 1 -r
+            echo
+            case "$REPLY" in
+                2)
+                    # Generate PCR0 via GitHub Action
+                    generate_nitro_pcr0_remote
+                    ;;
+                1|*)
+                    full_automation
+                    ask_contract_update
+                    ;;
+            esac
             ;;
         *)
             echo -e "${RED}❌ Unknown option: $1${NC}"
@@ -409,4 +538,4 @@ main() {
     esac
 }
 
-main "$@" 
+main "$@"
