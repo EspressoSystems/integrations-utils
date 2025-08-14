@@ -6,14 +6,17 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/config.sh"
+source "${SCRIPT_DIR}/summary_generator.sh"
 
 declare MRENCLAVE MRSIGNER RPC_URL NETWORK
+declare NITRO_RUN_ID NITRO_KECCAK_HASH NITRO_IMAGE_NAME NITRO_ENCLAVER_NAME
 
-if [ -f ".env" ]; then
-    echo -e "${BLUE}📋 Loading environment variables from .env file${NC}"
-    export $(cat .env | grep -v '^#' | xargs)
-    CONTRACT_ADDRESS=${TEE_SGX_ADDRESS:-""}
+# Always look for .env in repo root
+if [ -f "${SCRIPT_DIR}/../.env" ]; then
+    echo -e "${BLUE}📋 Loading environment variables from repo root .env file${NC}"
+    export $(cat "${SCRIPT_DIR}/../.env" | grep -v '^#' | xargs)
 fi
+MAIN_TEE_VERIFIER_ADDRESS=${MAIN_TEE_VERIFIER_ADDRESS:-""}
 
 cleanup() {
     if [ -f "${REPORT_BIN}" ] || [ -f "${REPORT_HEX}" ]; then
@@ -126,7 +129,7 @@ generate_nitro_pcr0_remote() {
         -F config_hash="0000000000000000000000000000000000000000000000000000000000000000"
 
 
-    echo "Enclaver Image Name: Build Enclaver Docker Image - $enclaver_image_name"
+    echo "Gh Run Name: Build Enclaver Docker Image - $enclaver_image_name"
 
     sleep 5
 
@@ -142,6 +145,9 @@ generate_nitro_pcr0_remote() {
         return 1
     fi
     echo "Retrieved run ID: $run_id"
+    
+    NITRO_RUN_ID="$run_id"
+    NITRO_ENCLAVER_NAME="$enclaver_image_name"
 
     gh repo set-default EspressoSystems/aws-nitro || {
         echo -e "${RED}❌ Failed to set default repository for gh CLI${NC}"
@@ -149,18 +155,19 @@ generate_nitro_pcr0_remote() {
     }
 
     echo -e "${BLUE}🔄 Running GitHub Actions workflow...${NC}"
-    local run_log keccak_hash image_name status run_info timestamp
+    local run_log status run_info timestamp
     
     while true; do
         sleep 5
-        run_log=$(gh run view "$run_id" --repo EspressoSystems/aws-nitro --log 2>/dev/null || echo "")
         run_info=$(gh run view "$run_id" --repo EspressoSystems/aws-nitro --json status 2>/dev/null || echo "")
         status=$(echo "$run_info" | jq -r '.status')
 
         if [ "$status" = "completed" ]; then
-            echo -e "${GREEN}✅ Workflow completed${NC}"
+            echo -e "${GREEN}✅ Workflow completed successfully${NC}"
+            echo -e "${BLUE}⏳ Processing workflow results...${NC}"
+            sleep 10
             
-            # Extract PCR0 keccak hash and timestamp from logs
+            run_log=$(gh run view "$run_id" --repo EspressoSystems/aws-nitro --log 2>/dev/null || echo "")
             keccak_hash=$(echo "$run_log" | grep -E 'PCR0 keccak hash: 0x[0-9a-fA-F]+' | tail -n1 | sed -n 's/.*PCR0 keccak hash: \(0x[0-9a-fA-F]*\).*/\1/p')
             timestamp=$(echo "$run_log" | grep -E 'TIMESTAMP:' | tail -n1 | sed -n 's/.*TIMESTAMP: \([0-9]*\).*/\1/p')
             
@@ -168,8 +175,9 @@ generate_nitro_pcr0_remote() {
                 image_name="ghcr.io/espressosystems/aws-nitro-poster:${enclaver_image_name}-${timestamp}"
             fi
             
+            NITRO_KECCAK_HASH="$keccak_hash"
+            NITRO_IMAGE_NAME="$image_name"
             MRENCLAVE="${keccak_hash#0x}"
-            
             break
         fi
         if echo "$run_log" | grep -q "Run failed"; then
@@ -178,31 +186,19 @@ generate_nitro_pcr0_remote() {
         fi
     done
     if [ -z "$keccak_hash" ]; then
-        echo -e "${RED}❌ Could not extract PCR0 from workflow logs${NC}"
+        echo -e "${RED}❌ Failed to extract PCR0 hash from workflow logs${NC}"
         return 1
     fi
 
-    echo -e "${GREEN}✅ PCR0 keccak captured:${NC} ${keccak_hash}"
-    
+    echo ""
+    echo -e "${GREEN}🎉 AWS Nitro PCR0 Generation Complete!${NC}"
+    echo "=========================================="
+    echo -e "${BLUE}📋 Results:${NC}"
+    echo "   PCR0 Hash: ${keccak_hash}"
     if [ -n "$image_name" ]; then
-        echo -e "${GREEN}✅ Image name captured:${NC} ${image_name}"
-    else
-        echo -e "${YELLOW}⚠️  Could not extract image name from workflow logs${NC}"
+        echo "   Image:     ${image_name}"
     fi
-
-    cat > nitro_pcr0_summary.txt << EOF
-
-AWS Nitro PCR0 Summary
-===============================
-
-Timestamp: $(date)
-
-Computed:
-- PCR0 keccak hash: ${keccak_hash}
-$([ -n "$image_name" ] && echo "- Image name: ${image_name}")
-EOF
-
-    echo -e "${GREEN}✅ Summary saved to: nitro_pcr0_summary.txt${NC}"
+    echo ""
 }
 
 # =============================================================================
@@ -212,54 +208,69 @@ EOF
 prepare_contract_interaction() {
     echo -e "${YELLOW}🔗 Preparing contract update...${NC}"
     
-    extract_enclave_values
-    
-    cat > sgx_enclave_summary.txt << EOF
-
-MR Enclave Summary
-===============================
-
-Timestamp: $(date)
-
-Raw Enclave Hash:
-$(cat ${REPORT_FILE})
-
-Processed Data:
-- MRENCLAVE: ${MRENCLAVE}
-- MRSIGNER: ${MRSIGNER}
-
-Contract Update:
-- Contract Function: setEnclaveHash (0x93b5552e)
-- Parameters:
-  * enclaveHash: 0x${MRENCLAVE}
-  * valid: true
-
-Next Steps:
-1. Go to Etherscan/Arbiscan
-2. Navigate to the EspressoSGXVerifier contract
-3. Connect with owner key accessible from bitwarden
-4. Call setEnclaveHash function with the above parameters
-EOF
-
-    echo -e "${GREEN}✅ Summary saved to: sgx_enclave_summary.txt${NC}"
+    if [ "$TEE_TYPE" = "sgx" ]; then
+        echo -e "${BLUE}🔍 Extracting SGX enclave values...${NC}"
+        extract_enclave_values
+        
+        local summary_file=$(generate_sgx_summary "$MRENCLAVE" "$MRSIGNER" "$REPORT_FILE")
+        echo -e "${GREEN}✅ Summary saved to ${summary_file}${NC}"
+    else
+        echo -e "${BLUE}🔍 Using AWS Nitro PCR0 hash...${NC}"
+        echo -e "${GREEN}✅ MRENCLAVE ready for contract update: ${MRENCLAVE}${NC}"
+        
+        local summary_file=$(generate_nitro_summary "$NITRO_RUN_ID" "$NITRO_ENCLAVER_NAME" "$NITRO_KECCAK_HASH" "$NITRO_IMAGE_NAME" "$MRENCLAVE")
+        echo -e "${GREEN}✅ Summary saved to ${summary_file}${NC}"
+    fi
 }
 
 get_contract_address() {
-    if [ -z "${CONTRACT_ADDRESS}" ]; then
-        echo -e "${YELLOW}⚠️  No contract address specified in TEE_SGX_ADDRESS environment variable${NC}"
-        echo -e "${YELLOW}💡 Create a .env file from env.template and set TEE_SGX_ADDRESS${NC}"
-        read -p "Would you like to specify a contract address now? (y/n): " -n 1 -r
+    if [ -n "${MAIN_TEE_VERIFIER_ADDRESS}" ]; then
+        echo -e "${BLUE}📋 Main EspressoTEEVerifier address from .env: ${MAIN_TEE_VERIFIER_ADDRESS}${NC}"
+        read -p "Use this address? (y/n): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            read -p "Enter main EspressoTEEVerifier contract address: " MAIN_TEE_VERIFIER_ADDRESS
+        fi
+    else
+        echo -e "${YELLOW}⚠️  No main EspressoTEEVerifier contract address specified${NC}"
+        echo -e "${YELLOW}💡 Create a .env file from env.template and set MAIN_TEE_VERIFIER_ADDRESS${NC}"
+        read -p "Would you like to specify the main EspressoTEEVerifier contract address now? (y/n): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            read -p "Enter contract address: " CONTRACT_ADDRESS
+            read -p "Enter main EspressoTEEVerifier contract address: " MAIN_TEE_VERIFIER_ADDRESS
         fi
     fi
     
-    if [ -n "${CONTRACT_ADDRESS}" ]; then
-        echo -e "${GREEN}✅ Contract address: ${CONTRACT_ADDRESS}${NC}"
+    if [ -n "${MAIN_TEE_VERIFIER_ADDRESS}" ]; then
+        echo -e "${GREEN}✅ Main EspressoTEEVerifier address: ${MAIN_TEE_VERIFIER_ADDRESS}${NC}"
         return 0
     else
         echo -e "${YELLOW}💡 No contract address provided, skipping contract setup${NC}"
+        return 1
+    fi
+}
+
+get_tee_verifier_address() {
+    if [ "$TEE_TYPE" = "nitro" ]; then
+        echo -e "${BLUE}🔍 Getting AWS Nitro TEE verifier address...${NC}"
+        # Call espressoNitroTEEVerifier() method
+        CONTRACT_ADDRESS=$(cast call "${MAIN_TEE_VERIFIER_ADDRESS}" "espressoNitroTEEVerifier()" --rpc-url "${RPC_URL}" 2>/dev/null | sed 's/^0x000000000000000000000000/0x/' 2>/dev/null)
+        echo -e "${GREEN}✅ Nitro TEE Verifier address: ${CONTRACT_ADDRESS}${NC}"
+    else
+        echo -e "${BLUE}🔍 Getting SGX TEE verifier address...${NC}"
+        # Call espressoSGXTEEVerifier() method  
+        CONTRACT_ADDRESS=$(cast call "${MAIN_TEE_VERIFIER_ADDRESS}" "espressoSGXTEEVerifier()" --rpc-url "${RPC_URL}" 2>/dev/null | sed 's/^0x000000000000000000000000/0x/' 2>/dev/null)
+        echo -e "${GREEN}✅ SGX TEE Verifier address: ${CONTRACT_ADDRESS}${NC}"
+    fi
+    
+    if [ -n "${CONTRACT_ADDRESS}" ] && [ "${CONTRACT_ADDRESS}" != "0x" ]; then
+        return 0
+    else
+        if [ "$TEE_TYPE" = "nitro" ]; then
+            echo -e "${RED}❌ Failed to get AWS Nitro TEE verifier address${NC}"
+        else
+            echo -e "${RED}❌ Failed to get SGX TEE verifier address${NC}"
+        fi
         return 1
     fi
 }
@@ -319,20 +330,37 @@ ask_contract_update() {
         return
     fi
     
+    if ! get_tee_verifier_address; then
+        return
+    fi
+    
     run_contract_update
 }
 
 get_contract_owner() {
-    echo -e "${YELLOW}🔄 Getting contract owner...${NC}"
+    if [ "$TEE_TYPE" = "nitro" ]; then
+        echo -e "${YELLOW}🔄 Getting AWS Nitro TEE verifier contract owner...${NC}"
+    else
+        echo -e "${YELLOW}🔄 Getting SGX TEE verifier contract owner...${NC}"
+    fi
+    echo -e "${BLUE}📋 Checking owner of: ${CONTRACT_ADDRESS}${NC}"
     echo ""
     
     if cast call "${CONTRACT_ADDRESS}" "owner()" --rpc-url "${RPC_URL}" 2>/dev/null; then
         OWNER_ADDRESS=$(cast call "${CONTRACT_ADDRESS}" "owner()" --rpc-url "${RPC_URL}" 2>/dev/null | sed 's/^0x000000000000000000000000/0x/' 2>/dev/null)
-        echo -e "${GREEN}✅ Contract owner: ${OWNER_ADDRESS}${NC}"
+        if [ "$TEE_TYPE" = "nitro" ]; then
+            echo -e "${GREEN}✅ AWS Nitro TEE verifier contract owner: ${OWNER_ADDRESS}${NC}"
+        else
+            echo -e "${GREEN}✅ SGX TEE verifier contract owner: ${OWNER_ADDRESS}${NC}"
+        fi
         echo -e "${YELLOW}💡 Look for this address in Bitwarden to find the private key${NC}"
         return 0
     else
-        echo -e "${RED}❌ Failed to get contract owner. Check contract address and RPC.${NC}"
+        if [ "$TEE_TYPE" = "nitro" ]; then
+            echo -e "${RED}❌ Failed to get AWS Nitro TEE verifier contract owner. Check contract address and RPC.${NC}"
+        else
+            echo -e "${RED}❌ Failed to get SGX TEE verifier contract owner. Check contract address and RPC.${NC}"
+        fi
         echo -e "${YELLOW}💡 Common issues:${NC}"
         echo "   - Contract address is incorrect"
         echo "   - RPC endpoint is invalid or not responding"
@@ -400,7 +428,13 @@ run_contract_update() {
     echo ""
     
     if [ -z "${MRENCLAVE}" ]; then
-        MRENCLAVE=$(./decode_report_data.sh | grep "MRENCLAVE:" | cut -d' ' -f2)
+        if [ "$TEE_TYPE" = "sgx" ]; then
+            MRENCLAVE=$(./decode_report_data.sh | grep "MRENCLAVE:" | cut -d' ' -f2)
+        else
+            echo -e "${RED}❌ MRENCLAVE not available for AWS Nitro workflow${NC}"
+            echo -e "${YELLOW}💡 This should have been set during PCR0 generation${NC}"
+            return 1
+        fi
     fi
     
     echo -e "${BLUE}📋 Contract Call Details:${NC}"
@@ -450,7 +484,7 @@ show_usage() {
     echo "  --help     - Show this help"
     echo ""
     echo "Environment Variables:"
-    echo "  TEE_SGX_ADDRESS      - Contract address for update (.env file)"
+    echo "  MAIN_TEE_VERIFIER_ADDRESS - Main EspressoTEEVerifier contract address (.env file)"
     echo "  PRIVATE_KEY          - Private key for contract owner (optional, will prompt if not set)"
     echo "  ETHEREUM_MAINNET_RPC - Ethereum mainnet RPC URL"
     echo "  ARBITRUM_MAINNET_RPC - Arbitrum mainnet RPC URL"
@@ -461,7 +495,7 @@ show_usage() {
     echo "  $0                    # Full automation with contract update"
     echo "  $0 --help            # Show help"
     echo ""
-    echo "  # With .env file containing TEE_SGX_ADDRESS"
+    echo "  # With .env file containing MAIN_TEE_VERIFIER_ADDRESS"
     echo "  cp env.template .env  # Copy template and edit"
     echo "  $0                    # Run automation"
 }
@@ -471,7 +505,7 @@ display_next_steps() {
     echo -e "${GREEN}🎉 Automation Complete!${NC}"
     echo "========================================"
     echo -e "${BLUE}📋 Next Steps:${NC}"
-    echo "Review the enclave verification summary"
+    echo "Review the enclave update summary"
     echo ""
     echo -e "${YELLOW}🔗 Option 1: Use the script (recommended)${NC}"
     echo "   - Continue with the script to get the contract owner and update command"
@@ -479,8 +513,12 @@ display_next_steps() {
     echo ""
     echo -e "${YELLOW}🔗 Option 2: Manual update via Etherscan/Arbiscan${NC}"
     echo "   - Go to Etherscan/Arbiscan"
-    echo "   - Navigate to the EspressoSGXVerifier verifier contract:"
-    echo "   - Connect with the owner wallet accessible from Bitwarden"
+    if [ "$TEE_TYPE" = "nitro" ]; then
+        echo "   - Navigate to the EspressoNitroTEEVerifier contract"
+    else
+        echo "   - Navigate to the EspressoSGXVerifier contract"
+    fi
+    echo "   - Connect with the owner wallet"
     echo "   - Call setEnclaveHash function with:"
     echo "     * enclaveHash: 0x${MRENCLAVE}"
     echo "     * valid: true"
@@ -499,6 +537,15 @@ full_automation() {
     read -p "Select (1/2): " -n 1 -r
     echo
     echo ""
+    
+    case "$REPLY" in
+        2)
+            TEE_TYPE="nitro"
+            ;;
+        1|*)
+            TEE_TYPE="sgx"
+            ;;
+    esac
     
     echo -e "${BLUE}🔍 Starting Full Enclave Update Automation${NC}"
     echo "======================================================="

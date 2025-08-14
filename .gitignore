@@ -1,2 +1,3 @@
-/set-enclave-hash/nitro_pcr0_summary.txt
-/set-enclave-hash/sgx_enclave_summary.txt
+.env
+
+/set-enclave-hash/report.txt
