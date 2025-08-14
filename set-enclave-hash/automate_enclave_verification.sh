@@ -168,6 +168,8 @@ generate_nitro_pcr0_remote() {
                 image_name="ghcr.io/espressosystems/aws-nitro-poster:${enclaver_image_name}-${timestamp}"
             fi
             
+            MRENCLAVE="${keccak_hash#0x}"
+            
             break
         fi
         if echo "$run_log" | grep -q "Run failed"; then
@@ -397,7 +399,6 @@ run_contract_update() {
     echo "==============================="
     echo ""
     
-    # Extract MRENCLAVE for the call (in case it wasn't set)
     if [ -z "${MRENCLAVE}" ]; then
         MRENCLAVE=$(./decode_report_data.sh | grep "MRENCLAVE:" | cut -d' ' -f2)
     fi
@@ -492,16 +493,33 @@ display_next_steps() {
 # =============================================================================
 
 full_automation() {
-    echo -e "${BLUE}🔍 Starting Full MR Enclave Update Automation${NC}"
+    echo -e "${BLUE}📋 Choose TEE type:${NC}"
+    echo "1) Intel SGX"
+    echo "2) AWS Nitro"
+    read -p "Select (1/2): " -n 1 -r
+    echo
+    echo ""
+    
+    echo -e "${BLUE}🔍 Starting Full Enclave Update Automation${NC}"
     echo "======================================================="
     echo ""    
 
-    echo -e "${BLUE}📋 Step 1/6: Processing Enclave Data${NC}"
-    echo "----------------------------------------"
-    check_report_file
-    convert_to_binary
-    decode_report_data
-    echo ""
+    case "$REPLY" in
+        2)
+            echo -e "${BLUE}📋 Step 1/6: AWS Nitro PCR0 Generation${NC}"
+            echo "----------------------------------------"
+            generate_nitro_pcr0_remote
+            echo ""
+            ;;
+        1|*)
+            echo -e "${BLUE}📋 Step 1/6: Processing SGX Enclave Data${NC}"
+            echo "----------------------------------------"
+            check_report_file
+            convert_to_binary
+            decode_report_data
+            echo ""
+            ;;
+    esac
     
     echo -e "${BLUE}📋 Step 2/6: Preparing Contract Interaction${NC}"
     echo "----------------------------------------"
@@ -519,21 +537,8 @@ main() {
             show_usage
             ;;
         "")
-            echo -e "${BLUE}📋 Choose TEE type:${NC}"
-            echo "1) Intel SGX"
-            echo "2) AWS Nitro"
-            read -p "Select (1/2): " -n 1 -r
-            echo
-            case "$REPLY" in
-                2)
-                    # Generate PCR0 via GitHub Action
-                    generate_nitro_pcr0_remote
-                    ;;
-                1|*)
-                    full_automation
-                    ask_contract_update
-                    ;;
-            esac
+            full_automation
+            ask_contract_update
             ;;
         *)
             echo -e "${RED}❌ Unknown option: $1${NC}"
