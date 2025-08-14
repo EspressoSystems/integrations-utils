@@ -148,30 +148,30 @@ generate_nitro_pcr0_remote() {
         return 1
     }
 
-    echo -e "${BLUE}📋 Waiting for workflow to complete...${NC}"
-    local run_log keccak_line keccak_hash status
-    keccak_hash=""
+    echo -e "${BLUE}🔄 Running GitHub Actions workflow...${NC}"
+    local run_log keccak_hash image_name status run_info timestamp
+    
     while true; do
         sleep 5
         run_log=$(gh run view "$run_id" --repo EspressoSystems/aws-nitro --log 2>/dev/null || echo "")
-
-        if [ -z "$keccak_hash" ]; then
-            keccak_line=$(echo "$run_log" | grep -E 'PCR0 keccak hash: 0x[0-9a-fA-F]+' | tail -n1)
-
-            if [ -n "$keccak_line" ]; then
-                keccak_hash=$(echo "$keccak_line" | sed -n 's/.*PCR0 keccak hash: \(0x[0-9a-fA-F]*\).*/\1/p')
-            fi
-        fi
-
         run_info=$(gh run view "$run_id" --repo EspressoSystems/aws-nitro --json status 2>/dev/null || echo "")
         status=$(echo "$run_info" | jq -r '.status')
 
         if [ "$status" = "completed" ]; then
             echo -e "${GREEN}✅ Workflow completed${NC}"
+            
+            # Extract PCR0 keccak hash and timestamp from logs
+            keccak_hash=$(echo "$run_log" | grep -E 'PCR0 keccak hash: 0x[0-9a-fA-F]+' | tail -n1 | sed -n 's/.*PCR0 keccak hash: \(0x[0-9a-fA-F]*\).*/\1/p')
+            timestamp=$(echo "$run_log" | grep -E 'TIMESTAMP:' | tail -n1 | sed -n 's/.*TIMESTAMP: \([0-9]*\).*/\1/p')
+            
+            if [ -n "$timestamp" ]; then
+                image_name="ghcr.io/espressosystems/aws-nitro-poster:${enclaver_image_name}-${timestamp}"
+            fi
+            
             break
         fi
         if echo "$run_log" | grep -q "Run failed"; then
-            echo -e "${RED}❌ Workflow failed before keccak was printed${NC}"
+            echo -e "${RED}❌ Workflow failed${NC}"
             return 1
         fi
     done
@@ -180,8 +180,13 @@ generate_nitro_pcr0_remote() {
         return 1
     fi
 
-    echo -e "${GREEN}✅ PCR0 keccak captured${NC}"
-    echo "PCR0 keccak hash: ${keccak_hash}"
+    echo -e "${GREEN}✅ PCR0 keccak captured:${NC} ${keccak_hash}"
+    
+    if [ -n "$image_name" ]; then
+        echo -e "${GREEN}✅ Image name captured:${NC} ${image_name}"
+    else
+        echo -e "${YELLOW}⚠️  Could not extract image name from workflow logs${NC}"
+    fi
 
     cat > nitro_pcr0_summary.txt << EOF
 
@@ -192,6 +197,7 @@ Timestamp: $(date)
 
 Computed:
 - PCR0 keccak hash: ${keccak_hash}
+$([ -n "$image_name" ] && echo "- Image name: ${image_name}")
 EOF
 
     echo -e "${GREEN}✅ Summary saved to: nitro_pcr0_summary.txt${NC}"
