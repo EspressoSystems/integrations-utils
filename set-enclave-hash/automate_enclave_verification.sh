@@ -37,7 +37,7 @@ cleanup() {
 trap cleanup EXIT
 
 # =============================================================================
-# EXTRACT ENCLAVE VALUES
+# SGX - EXTRACT ENCLAVE VALUES
 # =============================================================================
 
 check_report_file() {
@@ -337,7 +337,7 @@ select_network_rpc() {
     return 0
 }
 
-ask_contract_update() {
+prompt_contract_update() {
     echo ""
     echo -e "${YELLOW}🔗 Contract Update Setup${NC}"
     echo "==============================="
@@ -354,7 +354,7 @@ ask_contract_update() {
         return
     fi
     
-    run_contract_update
+    run_contract_update_workflow
 }
 
 get_contract_owner() {
@@ -451,7 +451,7 @@ display_update_command() {
     echo -e "${YELLOW}💡 Replace YOUR_PRIVATE_KEY with the actual private key${NC}"
 }
 
-execute_contract_update() {
+send_contract_transaction() {
     echo ""
     echo -e "${YELLOW}🔑 Setting up private key for contract execution...${NC}"
     
@@ -484,7 +484,7 @@ execute_contract_update() {
     fi
 }
 
-run_contract_update() {
+run_contract_update_workflow() {
     echo -e "${YELLOW}🚀 Contract Update Command${NC}"
     echo "==============================="
     echo ""
@@ -528,7 +528,7 @@ run_contract_update() {
     
     echo -e "${BLUE}📋 Step 6/6: Execute Contract Update${NC}"
     echo "----------------------------------------"
-    execute_contract_update
+    send_contract_transaction
 }
 
 # =============================================================================
@@ -656,7 +656,7 @@ main() {
             ;;
         "")
             full_automation
-            ask_contract_update
+            prompt_contract_update
             ;;
         *)
             echo -e "${RED}❌ Unknown option: $1${NC}"
