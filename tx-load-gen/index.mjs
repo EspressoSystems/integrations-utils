@@ -1,6 +1,7 @@
 import { ethers } from "ethers";
 import { createRequire } from 'module';
 import fs from 'fs';
+import { webcrypto } from 'node:crypto';
 
 const require = createRequire(import.meta.url);
 const readline = require('readline');
@@ -61,6 +62,52 @@ const getPrivateKey = () => {
     process.exit(1);
 };
 
+const selectDataSize = () => {
+    return new Promise((resolve) => {
+        console.log("\n📦 DATA SIZE OPTIONS");
+        console.log("");
+        console.log("   1.  Small    (1KB)");
+        console.log("   2.  Medium   (10KB)");
+        console.log("   3.  Large    (40KB)");
+        console.log("   4.  Max      (64KB)");
+        console.log("   5.  Custom   (specify KB)");
+        console.log("");
+        
+        const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+        
+        rl.question('Select data size (1-5): ', (answer) => {
+            const selection = parseInt(answer);
+            
+            if (selection === 1) {
+                rl.close();
+                resolve(1);
+            } else if (selection === 2) {
+                rl.close();
+                resolve(10);
+            } else if (selection === 3) {
+                rl.close();
+                resolve(40);
+            } else if (selection === 4) {
+                rl.close();
+                resolve(64);
+            } else if (selection === 5) {
+                rl.question('Enter KB size (max 64): ', (customSize) => {
+                    rl.close();
+                    const size = Math.min(parseInt(customSize) || 1, 64);
+                    resolve(size);
+                });
+            } else {
+                rl.close();
+                console.log("❌ Invalid selection");
+                process.exit(1);
+            }
+        });
+    });
+};
+
 const selectChain = () => {
     return new Promise((resolve) => {
         console.log("\n");
@@ -103,11 +150,19 @@ const selectChain = () => {
     });
 };
 
+const generateRandomData = (sizeKB) => {
+    if (sizeKB <= 0) return '0x';
+    const sizeBytes = Math.min(sizeKB * 1024, 65536); // cap at webcrypto limit
+    const array = new Uint8Array(sizeBytes);
+    webcrypto.getRandomValues(array);
+    return '0x' + Buffer.from(array).toString('hex');
+};
+
 const getConfig = () => {
     return {
         delayMs: parseInt(process.env.DELAY_MS) || 10,
         value: process.env.TX_VALUE || '1', // wei
-        gasPrice: process.env.GAS_PRICE || '10' // gwei (more realistic)
+        gasPrice: process.env.GAS_PRICE || '5' // gwei
     };
 };
 
@@ -117,17 +172,22 @@ const main = async () => {
     const selectedChain = await selectChain();
     console.log(`\n✅ Selected: ${selectedChain.name}`);
     
+    const selectedDataSize = await selectDataSize();
+    console.log(`\n✅ Data size: ${selectedDataSize}KB`);
+    
     const config = getConfig();
     const privateKey = getPrivateKey();
     
     const provider = new ethers.JsonRpcProvider(selectedChain.rpc);
     const signer = new ethers.Wallet(privateKey, provider);
     
+    const txData = generateRandomData(selectedDataSize);
     const txDetails = {
         from: signer.address,
         to: config.to || '0x00000000000000000000000000000000ffffffff',
         value: ethers.parseUnits(config.value, 'wei'),
         gasPrice: ethers.parseUnits(config.gasPrice, 'gwei'),
+        data: txData
     };
     
     console.log(`\n📊 Configuration:`);
@@ -137,6 +197,7 @@ const main = async () => {
     console.log(`   Delay:      ${config.delayMs}ms`);
     console.log(`   Value:      ${config.value} wei`);
     console.log(`   Gas Price:  ${config.gasPrice} gwei`);
+    console.log(`   Data Size:  ~${selectedDataSize}KB`);
     
     try {
         const balance = await provider.getBalance(signer.address);
