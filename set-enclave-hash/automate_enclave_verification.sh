@@ -11,12 +11,20 @@ source "${SCRIPT_DIR}/summary_generator.sh"
 declare MRENCLAVE MRSIGNER RPC_URL NETWORK
 declare NITRO_RUN_ID NITRO_KECCAK_HASH NITRO_IMAGE_NAME NITRO_ENCLAVER_NAME
 
-# Always look for .env in repo root
-if [ -f "${SCRIPT_DIR}/../.env" ]; then
-    echo -e "${BLUE}📋 Loading environment variables from repo root .env file${NC}"
-    export $(cat "${SCRIPT_DIR}/../.env" | grep -v '^#' | xargs)
+# Load environment variables from repo root
+ENV_FILE="${SCRIPT_DIR}/../.env"
+if [ -f "${ENV_FILE}" ]; then
+    echo -e "${BLUE}📋 Loading environment variables from: ${ENV_FILE}${NC}"
+    set -a
+    source "${ENV_FILE}"
+    set +a
+    echo -e "${GREEN}✅ Environment variables loaded${NC}"
+else
+    echo -e "${YELLOW}⚠️  No .env file found at: ${ENV_FILE}${NC}"
+    echo -e "${YELLOW}💡 Script will prompt for required values${NC}"
 fi
 MAIN_TEE_VERIFIER_ADDRESS=${MAIN_TEE_VERIFIER_ADDRESS:-""}
+PRIVATE_KEY=${PRIVATE_KEY:-""}
 
 cleanup() {
     if [ -f "${REPORT_BIN}" ] || [ -f "${REPORT_HEX}" ]; then
@@ -253,12 +261,10 @@ get_contract_address() {
 get_tee_verifier_address() {
     if [ "$TEE_TYPE" = "nitro" ]; then
         echo -e "${BLUE}🔍 Getting AWS Nitro TEE verifier address...${NC}"
-        # Call espressoNitroTEEVerifier() method
         CONTRACT_ADDRESS=$(cast call "${MAIN_TEE_VERIFIER_ADDRESS}" "espressoNitroTEEVerifier()" --rpc-url "${RPC_URL}" 2>/dev/null | sed 's/^0x000000000000000000000000/0x/' 2>/dev/null)
         echo -e "${GREEN}✅ Nitro TEE Verifier address: ${CONTRACT_ADDRESS}${NC}"
     else
         echo -e "${BLUE}🔍 Getting SGX TEE verifier address...${NC}"
-        # Call espressoSGXTEEVerifier() method  
         CONTRACT_ADDRESS=$(cast call "${MAIN_TEE_VERIFIER_ADDRESS}" "espressoSGXTEEVerifier()" --rpc-url "${RPC_URL}" 2>/dev/null | sed 's/^0x000000000000000000000000/0x/' 2>/dev/null)
         echo -e "${GREEN}✅ SGX TEE Verifier address: ${CONTRACT_ADDRESS}${NC}"
     fi
@@ -276,14 +282,28 @@ get_tee_verifier_address() {
 }
 
 select_network_rpc() {
-    echo -e "${BLUE}📋 Available RPC endpoints:${NC}"
-    echo "1. Ethereum Mainnet: ${ETHEREUM_MAINNET_RPC}"
-    echo "2. Arbitrum Mainnet: ${ARBITRUM_MAINNET_RPC}"
-    echo "3. Ethereum Sepolia: ${ETHEREUM_SEPOLIA_RPC}"
-    echo "4. Arbitrum Sepolia: ${ARBITRUM_SEPOLIA_RPC}"
-    echo "5. Custom RPC"
-    
-    read -p "Select RPC endpoint (1/2/3/4/5): " -n 1 -r
+    echo ""
+    echo -e "${BLUE}🌐 Network Selection${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo -e "${GREEN}📡 MAINNETS${NC}"
+    echo -e "   ${YELLOW}1.${NC}  Ethereum Mainnet"
+    echo -e "       └─ ${ETHEREUM_MAINNET_RPC}"
+    echo -e "   ${YELLOW}2.${NC}  Arbitrum Mainnet" 
+    echo -e "       └─ ${ARBITRUM_MAINNET_RPC}"
+    echo ""
+    echo -e "${BLUE}🧪 TESTNETS${NC}"
+    echo -e "   ${YELLOW}3.${NC}  Ethereum Sepolia"
+    echo -e "       └─ ${ETHEREUM_SEPOLIA_RPC}"
+    echo -e "   ${YELLOW}4.${NC}  Arbitrum Sepolia"
+    echo -e "       └─ ${ARBITRUM_SEPOLIA_RPC}"
+    echo ""
+    echo -e "${YELLOW}⚙️  CUSTOM${NC}"
+    echo -e "   ${YELLOW}5.${NC}  🛠️  Custom RPC URL"
+    echo ""
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    read -p "Select network (1-5): " -n 1 -r
+    echo ""
     echo
     
     case $REPLY in
@@ -353,7 +373,7 @@ get_contract_owner() {
         else
             echo -e "${GREEN}✅ SGX TEE verifier contract owner: ${OWNER_ADDRESS}${NC}"
         fi
-        echo -e "${YELLOW}💡 Look for this address in Bitwarden to find the private key${NC}"
+        echo -e "${YELLOW}💡 Find associated private key${NC}"
         return 0
     else
         if [ "$TEE_TYPE" = "nitro" ]; then
@@ -384,6 +404,45 @@ get_contract_owner() {
     fi
 }
 
+get_private_key() {
+    if [ -n "${PRIVATE_KEY}" ]; then
+        echo -e "${BLUE}Private key found in .env file: ${PRIVATE_KEY:0:8}...${NC}"
+        read -p "Use this private key? (y/n): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            return 0
+        else
+            echo -e "${YELLOW}💡 Please enter your private key:${NC}"
+        fi
+    else
+        echo -e "${YELLOW}🔑 No private key found in .env file${NC}"
+        echo -e "${YELLOW}💡 Please enter your private key for contract execution:${NC}"
+    fi
+    
+    # Prompt for private key hidden input
+    echo -n "Private key (0x...): "
+    read -s NEW_PRIVATE_KEY
+    echo  
+    
+    if [ -z "$NEW_PRIVATE_KEY" ]; then
+        echo -e "${YELLOW}⚠️  No private key provided${NC}"
+        return 1
+    fi
+    
+    if [[ ! "$NEW_PRIVATE_KEY" =~ ^0x ]]; then
+        NEW_PRIVATE_KEY="0x${NEW_PRIVATE_KEY}"
+    fi
+    
+    if [[ ! "$NEW_PRIVATE_KEY" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+        echo -e "${RED}❌ Invalid private key format. Should be 64 hex characters${NC}"
+        return 1
+    fi
+    
+    PRIVATE_KEY="$NEW_PRIVATE_KEY"
+    echo -e "${GREEN}✅ Private key set${NC}"
+    return 0
+}
+
 display_update_command() {
     echo -e "${BLUE}📋 Complete command to update the contract:${NC}"
     echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key YOUR_PRIVATE_KEY"
@@ -393,32 +452,35 @@ display_update_command() {
 }
 
 execute_contract_update() {
-    if [ -n "${PRIVATE_KEY}" ]; then
+    echo ""
+    echo -e "${YELLOW}🔑 Setting up private key for contract execution...${NC}"
+    
+    if ! get_private_key; then
         echo ""
-        echo -e "${GREEN}🔑 Private key found in environment${NC}"
-        echo -e "${BLUE}📋 Ready to execute:${NC}"
-        echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key ${PRIVATE_KEY:0:10}..."
+        return 1
+    fi
+    
+    echo ""
+    echo -e "${BLUE}📋 Ready to execute contract update:${NC}"
+    echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key ${PRIVATE_KEY:0:8}..."
+    echo ""
+    echo -e "${YELLOW}⚠️  This will actually update the contract on ${NETWORK}${NC}"
+    read -p "Are you ready to execute this command? (y/n): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}🚀 Executing contract update...${NC}"
         echo ""
-        echo -e "${YELLOW}⚠️  This will actually update the contract on ${NETWORK}${NC}"
-        read -p "Are you ready to execute this command? (y/n): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            echo -e "${YELLOW}🚀 Executing contract update...${NC}"
-            echo ""
-            if cast send "${CONTRACT_ADDRESS}" "setEnclaveHash(bytes32,bool)" "0x${MRENCLAVE}" true --rpc-url "${RPC_URL}" --private-key "${PRIVATE_KEY}"; then
-                echo -e "${GREEN}✅ Contract update successful!${NC}"
-                echo -e "${GREEN}🎉 The enclave hash has been updated on ${NETWORK}${NC}"
-            else
-                echo -e "${RED}❌ Contract update failed${NC}"
-                echo -e "${YELLOW}💡 Check the error message above for details${NC}"
-            fi
+        if cast send "${CONTRACT_ADDRESS}" "setEnclaveHash(bytes32,bool)" "0x${MRENCLAVE}" true --rpc-url "${RPC_URL}" --private-key "${PRIVATE_KEY}"; then
+            echo -e "${GREEN}✅ Contract update successful!${NC}"
+            echo -e "${GREEN}🎉 The enclave hash has been updated on ${NETWORK}${NC}"
         else
-            echo -e "${YELLOW}💡 Command execution cancelled. You can run it manually later.${NC}"
+            echo -e "${RED}❌ Contract update failed${NC}"
+            echo -e "${YELLOW}💡 Check the error message above for details${NC}"
         fi
     else
         echo ""
-        echo -e "${YELLOW}💡 To execute automatically, set PRIVATE_KEY in your .env file${NC}"
-        echo -e "${YELLOW}💡 Or run the command manually with your private key${NC}"
+        echo -e "${YELLOW}💡 Command execution cancelled${NC}"
+        echo ""
     fi
 }
 
@@ -485,7 +547,7 @@ show_usage() {
     echo ""
     echo "Environment Variables:"
     echo "  MAIN_TEE_VERIFIER_ADDRESS - Main EspressoTEEVerifier contract address (.env file)"
-    echo "  PRIVATE_KEY          - Private key for contract owner (optional, will prompt if not set)"
+    echo "  PRIVATE_KEY          - Private key for contract owner (optional, will prompt for confirmation/input)"
     echo "  ETHEREUM_MAINNET_RPC - Ethereum mainnet RPC URL"
     echo "  ARBITRUM_MAINNET_RPC - Arbitrum mainnet RPC URL"
     echo "  ETHEREUM_SEPOLIA_RPC - Ethereum Sepolia RPC URL"
@@ -531,10 +593,19 @@ display_next_steps() {
 # =============================================================================
 
 full_automation() {
-    echo -e "${BLUE}📋 Choose TEE type:${NC}"
-    echo "1) Intel SGX"
-    echo "2) AWS Nitro"
-    read -p "Select (1/2): " -n 1 -r
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo -e "${GREEN}🛡️  TRUSTED EXECUTION ENVIRONMENTS${NC}"
+    echo ""
+    echo -e "   ${YELLOW}1.${NC}  🔷 Intel SGX"
+    echo -e "       └─ Uses existing enclave data (report.txt)"
+    echo ""
+    echo -e "   ${YELLOW}2.${NC}  ☁️  AWS Nitro Enclaves"
+    echo -e "       └─ Generates Image and PCR0 hash via GitHub Actions"
+    echo ""
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    read -p "Select TEE type (1-2): " -n 1 -r
     echo
     echo ""
     
