@@ -34,6 +34,8 @@ PCR0 Generation Results:
 - Docker image: ${image_name}")
 - MRENCLAVE: ${mrenclave}
 
+Use the generated docker image in the Nitro Box: ${image_name}
+
 Contract Update Parameters:
 - Contract Function: setEnclaveHash (0x93b5552e)
 - enclaveHash: 0x${mrenclave}

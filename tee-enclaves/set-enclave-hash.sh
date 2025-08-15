@@ -206,6 +206,7 @@ generate_nitro_pcr0_remote() {
     if [ -n "$image_name" ]; then
         echo "   Image:     ${image_name}"
     fi
+    echo "   Use the generated docker image in the Nitro Box"
     echo ""
 }
 
