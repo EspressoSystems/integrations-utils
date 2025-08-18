@@ -15,29 +15,97 @@ fi
 # CONTRACT ADDRESS MANAGEMENT
 # =============================================================================
 
-get_contract_address() {
-    if [ -n "${MAIN_TEE_VERIFIER_ADDRESS}" ]; then
-        echo -e "${BLUE}📋 Main EspressoTEEVerifier address from .env: ${MAIN_TEE_VERIFIER_ADDRESS}${NC}"
-        read -p "Use this address? (y/n): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            read -p "Enter main EspressoTEEVerifier contract address: " MAIN_TEE_VERIFIER_ADDRESS
-        fi
-    else
-        echo -e "${YELLOW}⚠️  No main EspressoTEEVerifier contract address specified${NC}"
-        echo -e "${YELLOW}💡 Create a .env file from env.template and set MAIN_TEE_VERIFIER_ADDRESS${NC}"
-        read -p "Would you like to specify the main EspressoTEEVerifier contract address now? (y/n): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            read -p "Enter main EspressoTEEVerifier contract address: " MAIN_TEE_VERIFIER_ADDRESS
-        fi
-    fi
+select_target_chain() {
+    echo ""
+    echo -e "${BLUE}🌐 Chain Selection${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo -e "${BLUE}🧪 TESTNETS${NC}"
+    echo -e "   ${YELLOW}1.${NC}  Rari Testnet"
+    echo -e "   ${YELLOW}2.${NC}  LogX Testnet"
+    echo -e "   ${YELLOW}3.${NC}  Appchain Testnet"
+    echo ""
+    echo -e "${GREEN}📡 MAINNETS${NC}"
+    echo -e "   ${YELLOW}4.${NC}  Rari Mainnet"
+    echo -e "   ${YELLOW}5.${NC}  LogX Mainnet"
+    echo -e "   ${YELLOW}6.${NC}  Appchain Mainnet"
+    echo -e "   ${YELLOW}7.${NC}  Molten Mainnet"
+    echo ""
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    read -p "Select target chain (1-7): " -n 1 -r
+    echo ""
+    echo
     
-    if [ -n "${MAIN_TEE_VERIFIER_ADDRESS}" ]; then
+    case $REPLY in
+        1)
+            CHAIN_NAME="Rari Testnet"
+            SEQUENCER_INBOX_ADDRESS="${RARI_TESTNET_INBOX_ADDRESS}"
+            RPC_URL="${ARBITRUM_SEPOLIA_RPC}"  # Rari testnet settles on Arbitrum Sepolia
+            NETWORK="Arbitrum Sepolia (Rari Testnet)"
+            ;;
+        2)
+            CHAIN_NAME="LogX Testnet"
+            SEQUENCER_INBOX_ADDRESS="${LOGX_TESTNET_INBOX_ADDRESS}"
+            RPC_URL="${ETHEREUM_SEPOLIA_RPC}"  # LogX testnet settles on Ethereum Sepolia
+            NETWORK="Ethereum Sepolia (LogX Testnet)"
+            ;;
+        3)
+            CHAIN_NAME="Appchain Testnet"
+            SEQUENCER_INBOX_ADDRESS="${APPCHAIN_TESTNET_INBOX_ADDRESS}"
+            RPC_URL="${ETHEREUM_SEPOLIA_RPC}"  # Appchain testnet settles on Ethereum Sepolia
+            NETWORK="Ethereum Sepolia (Appchain Testnet)"
+            ;;
+        4)
+            CHAIN_NAME="Rari Mainnet"
+            SEQUENCER_INBOX_ADDRESS="${RARI_MAINNET_INBOX_ADDRESS}"
+            RPC_URL="${ARBITRUM_MAINNET_RPC}"  # Rari mainnet settles on Arbitrum One
+            NETWORK="Arbitrum One (Rari Mainnet)"
+            ;;
+        5)
+            CHAIN_NAME="LogX Mainnet"
+            SEQUENCER_INBOX_ADDRESS="${LOGX_MAINNET_INBOX_ADDRESS}"
+            RPC_URL="${ETHEREUM_MAINNET_RPC}"  # LogX mainnet settles on Ethereum Mainnet
+            NETWORK="Ethereum Mainnet (LogX Mainnet)"
+            ;;
+        6)
+            CHAIN_NAME="Appchain Mainnet"
+            SEQUENCER_INBOX_ADDRESS="${APPCHAIN_MAINNET_INBOX_ADDRESS}"
+            RPC_URL="${ETHEREUM_MAINNET_RPC}"  # Appchain mainnet settles on Ethereum Mainnet
+            NETWORK="Ethereum Mainnet (Appchain Mainnet)"
+            ;;
+        7)
+            CHAIN_NAME="Molten Mainnet"
+            SEQUENCER_INBOX_ADDRESS="${MOLTEN_MAINNET_INBOX_ADDRESS}"
+            RPC_URL="${ARBITRUM_MAINNET_RPC}"  # Molten mainnet settles on Arbitrum One
+            NETWORK="Arbitrum One (Molten Mainnet)"
+            ;;
+        *)
+            echo -e "${YELLOW}⚠️  Invalid selection${NC}"
+            return 1
+            ;;
+    esac
+    
+    echo -e "${GREEN}✅ Selected: ${CHAIN_NAME}${NC}"
+    echo -e "${BLUE}📋 Sequencer Inbox: ${SEQUENCER_INBOX_ADDRESS}${NC}"
+    echo -e "${BLUE}📋 Network: ${NETWORK}${NC}"
+    echo -e "${BLUE}📋 RPC: ${RPC_URL}${NC}"
+    return 0
+}
+
+get_main_tee_verifier_from_inbox() {
+    echo -e "${BLUE}🔍 Getting main TEE verifier address from sequencer inbox...${NC}"
+    
+    MAIN_TEE_VERIFIER_ADDRESS=$(cast call "${SEQUENCER_INBOX_ADDRESS}" "espressoTEEVerifier()" --rpc-url "${RPC_URL}" 2>/dev/null | sed 's/^0x000000000000000000000000/0x/' 2>/dev/null)
+    
+    if [ -n "${MAIN_TEE_VERIFIER_ADDRESS}" ] && [ "${MAIN_TEE_VERIFIER_ADDRESS}" != "0x" ]; then
         echo -e "${GREEN}✅ Main EspressoTEEVerifier address: ${MAIN_TEE_VERIFIER_ADDRESS}${NC}"
         return 0
     else
-        echo -e "${YELLOW}💡 No contract address provided, skipping contract setup${NC}"
+        echo -e "${RED}❌ Failed to get main TEE verifier address from sequencer inbox${NC}"
+        echo -e "${YELLOW}💡 Check if:${NC}"
+        echo "   - Sequencer inbox address is correct: ${SEQUENCER_INBOX_ADDRESS}"
+        echo "   - RPC endpoint is responding: ${RPC_URL}"
+        echo "   - Contract has the espressoTEEVerifier() method"
         return 1
     fi
 }
@@ -63,66 +131,6 @@ get_tee_verifier_address() {
         fi
         return 1
     fi
-}
-
-# =============================================================================
-# NETWORK SELECTION
-# =============================================================================
-
-select_network_rpc() {
-    echo ""
-    echo -e "${BLUE}🌐 Network Selection${NC}"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo -e "${GREEN}📡 MAINNETS${NC}"
-    echo -e "   ${YELLOW}1.${NC}  Ethereum Mainnet"
-    echo -e "       └─ ${ETHEREUM_MAINNET_RPC}"
-    echo -e "   ${YELLOW}2.${NC}  Arbitrum Mainnet" 
-    echo -e "       └─ ${ARBITRUM_MAINNET_RPC}"
-    echo ""
-    echo -e "${BLUE}🧪 TESTNETS${NC}"
-    echo -e "   ${YELLOW}3.${NC}  Ethereum Sepolia"
-    echo -e "       └─ ${ETHEREUM_SEPOLIA_RPC}"
-    echo -e "   ${YELLOW}4.${NC}  Arbitrum Sepolia"
-    echo -e "       └─ ${ARBITRUM_SEPOLIA_RPC}"
-    echo ""
-    echo -e "${YELLOW}⚙️  CUSTOM${NC}"
-    echo -e "   ${YELLOW}5.${NC}  🛠️  Custom RPC URL"
-    echo ""
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    read -p "Select network (1-5): " -n 1 -r
-    echo ""
-    echo
-    
-    case $REPLY in
-        1)
-            RPC_URL="${ETHEREUM_MAINNET_RPC}"
-            NETWORK="Ethereum Mainnet"
-            ;;
-        2)
-            RPC_URL="${ARBITRUM_MAINNET_RPC}"
-            NETWORK="Arbitrum Mainnet"
-            ;;
-        3)
-            RPC_URL="${ETHEREUM_SEPOLIA_RPC}"
-            NETWORK="Ethereum Sepolia"
-            ;;
-        4)
-            RPC_URL="${ARBITRUM_SEPOLIA_RPC}"
-            NETWORK="Arbitrum Sepolia"
-            ;;
-        5)
-            read -p "Enter custom RPC URL: " RPC_URL
-            NETWORK="Custom"
-            ;;
-        *)
-            echo -e "${YELLOW}⚠️  Invalid selection, skipping contract setup${NC}"
-            return 1
-            ;;
-    esac
-    
-    echo -e "${GREEN}✅ Selected: ${NETWORK} - ${RPC_URL}${NC}"
-    return 0
 }
 
 # =============================================================================
@@ -320,11 +328,11 @@ prompt_contract_update() {
     echo -e "${YELLOW}🔗 Contract Update Setup${NC}"
     echo "==============================="
     
-    if ! get_contract_address; then
+    if ! select_target_chain; then
         return
     fi
     
-    if ! select_network_rpc; then
+    if ! get_main_tee_verifier_from_inbox; then
         return
     fi
     
@@ -340,9 +348,9 @@ prompt_contract_update() {
 # =============================================================================
 
 # Export functions that may be called from the main script
-export -f get_contract_address
+export -f select_target_chain
+export -f get_main_tee_verifier_from_inbox
 export -f get_tee_verifier_address
-export -f select_network_rpc
 export -f get_contract_owner
 export -f get_private_key
 export -f display_update_command
