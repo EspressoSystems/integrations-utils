@@ -1,9 +1,24 @@
 {
     "dependencies": {
+        "dotenv": "^17.2.1",
         "ethers": "^6.13.5"
     },
     "devDependencies": {
+        "@types/node": "^24.3.0",
         "ts-node": "^10.9.2",
         "typescript": "^5.8.3"
-    }
+    },
+    "name": "tx-load-gen",
+    "version": "1.0.0",
+    "description": "Continuously sends transactions to an EVM-compatible blockchain.",
+    "main": "index.js",
+    "scripts": {
+        "start": "ts-node index.ts",
+        "dev": "ts-node index.ts",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "type": "module"
 }

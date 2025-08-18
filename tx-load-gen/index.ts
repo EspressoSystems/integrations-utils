@@ -1,9 +1,10 @@
 import { ethers } from "ethers";
 import { webcrypto } from 'node:crypto';
-import { selectDataSize, selectChain } from './selectors.mjs';
-import { CHAINS } from './chains.mjs';
+import { selectDataSize, selectChain } from './selectors.ts';
+import { CHAINS } from './chains.ts';
+import type { Config, TransactionDetails } from './types.ts';
 
-const getPrivateKey = () => {
+const getPrivateKey = (): string => {
     const envKey = process.env.PRIVATE_KEY;
     if (envKey) {
         return envKey;
@@ -14,7 +15,7 @@ const getPrivateKey = () => {
     process.exit(1);
 };
 
-const generateRandomData = (sizeKB) => {
+const generateRandomData = (sizeKB: number): string => {
     if (sizeKB <= 0) return '0x';
     const sizeBytes = Math.min(sizeKB * 1024, 65536); // cap at webcrypto limit
     const array = new Uint8Array(sizeBytes);
@@ -22,15 +23,15 @@ const generateRandomData = (sizeKB) => {
     return '0x' + Buffer.from(array).toString('hex');
 };
 
-const getConfig = () => {
+const getConfig = (): Config => {
     return {
-        delayMs: parseInt(process.env.DELAY_MS) || 10,
+        delayMs: parseInt(process.env.DELAY_MS || '') || 10,
         value: process.env.TX_VALUE || '1', // wei
         gasPrice: process.env.GAS_PRICE || '5' // gwei
     };
 };
 
-const main = async () => {
+const main = async (): Promise<void> => {
     console.log("🔥 Transaction Load Generator");
     
     const selectedChain = await selectChain(CHAINS);
@@ -46,7 +47,7 @@ const main = async () => {
     const signer = new ethers.Wallet(privateKey, provider);
     
     const txData = generateRandomData(selectedDataSize);
-    const txDetails = {
+    const txDetails: TransactionDetails = {
         from: signer.address,
         to: config.to || '0x00000000000000000000000000000000ffffffff',
         value: ethers.parseUnits(config.value, 'wei'),
@@ -84,21 +85,21 @@ const main = async () => {
                 txCount++;
                 console.log(`${txCount}. ${tx.hash}`);
                 
-                await new Promise(resolve => setTimeout(resolve, config.delayMs));
-            } catch (error) {
+                await new Promise<void>(resolve => setTimeout(resolve, config.delayMs));
+            } catch (error: any) {
                 console.error(`❌ TX Error: ${error.shortMessage || error.message}`);
 
-                await new Promise(resolve => setTimeout(resolve, config.delayMs));
+                await new Promise<void>(resolve => setTimeout(resolve, config.delayMs));
             }
         }
         
-    } catch (error) {
+    } catch (error: any) {
         console.error(`❌ Setup Error: ${error.shortMessage || error.message}`);
         process.exit(1);
     }
 };
 
-main().catch(error => {
+main().catch((error: any) => {
     console.error(`❌ Fatal Error: ${error.message}`);
     process.exit(1);
 });

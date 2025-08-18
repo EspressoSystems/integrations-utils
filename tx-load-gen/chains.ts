@@ -1,14 +1,7 @@
-import fs from 'fs';
+import dotenv from 'dotenv';
 
 // Load .env file if it exists
-if (fs.existsSync('../.env')) {
-    fs.readFileSync('../.env', 'utf8')
-        .split('\n')
-        .forEach(line => {
-            const [key, value] = line.split('=');
-            if (key && value) process.env[key] = value;
-        });
-}
+dotenv.config({ path: '../.env' });
 
 export const CHAINS = {
     testnets: {
