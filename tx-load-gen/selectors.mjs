@@ -54,17 +54,17 @@ export const selectChain = (chains) => {
         console.log("\n");
         console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         console.log("");
-        console.log("🌐 TESTNET NETWORKS");
+        console.log("🌐 TEST NETWORKS");
         console.log("");
         Object.entries(chains.testnets).forEach(([key, chain]) => {
-            console.log(`   ${key}.  ${chain.name}`);
+            console.log(`   ${chain.name}:`);
             console.log(`       └─ ${chain.rpc}`);
         });
         console.log("");
-        console.log("🚀 MAINNET NETWORKS");
+        console.log("🚀 MAIN NETWORKS");
         console.log("");
         Object.entries(chains.mainnets).forEach(([key, chain]) => {
-            console.log(`   ${key}.  ${chain.name}`);
+            console.log(`   ${chain.name}:`);
             console.log(`       └─ ${chain.rpc}`);
         });
         console.log("");
