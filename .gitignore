@@ -8,6 +8,7 @@
 */npm-debug.log*
 */yarn-debug.log*
 */yarn-error.log*
+/set-enclave-hash/report.txt
 
 # Optional: OS generated files
 .DS_Store
