@@ -59,6 +59,7 @@ You can customize the transaction generator behavior using environment variables
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PRIVATE_KEY` | Your wallet private key | **Required** |
+| `TO_ADDRESS` | Recipient address for transactions | Sender's own address |
 | `DELAY_MS` | Delay between transactions (ms) | `10` |
 | `TX_VALUE` | Transaction value in wei | `1` |
 | `GAS_PRICE` | Gas price in gwei | `5` |

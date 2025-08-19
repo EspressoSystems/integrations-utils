@@ -27,7 +27,8 @@ const getConfig = (): Config => {
     return {
         delayMs: parseInt(process.env.DELAY_MS || '') || 10,
         value: process.env.TX_VALUE || '1', // wei
-        gasPrice: process.env.GAS_PRICE || '5' // gwei
+        gasPrice: process.env.GAS_PRICE || '5', // gwei
+        to: process.env.TO_ADDRESS
     };
 };
 
@@ -49,7 +50,7 @@ const main = async (): Promise<void> => {
     const txData = generateRandomData(selectedDataSize);
     const txDetails: TransactionDetails = {
         from: signer.address,
-        to: config.to || '0x00000000000000000000000000000000ffffffff',
+        to: config.to || signer.address,
         value: ethers.parseUnits(config.value, 'wei'),
         gasPrice: ethers.parseUnits(config.gasPrice, 'gwei'),
         data: txData
@@ -59,6 +60,7 @@ const main = async (): Promise<void> => {
     console.log(`   Network:    ${selectedChain.name}`);
     console.log(`   RPC:        ${selectedChain.rpc}`);
     console.log(`   Sender:     ${signer.address}`);
+    console.log(`   Recipient:  ${txDetails.to}`);
     console.log(`   Delay:      ${config.delayMs}ms`);
     console.log(`   Value:      ${config.value} wei`);
     console.log(`   Gas Price:  ${config.gasPrice} gwei`);
