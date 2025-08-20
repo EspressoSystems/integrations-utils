@@ -163,7 +163,7 @@ generate_nitro_pcr0_remote() {
     }
 
     echo -e "${BLUE}🔄 Running GitHub Actions workflow...${NC}"
-    local run_log status run_info timestamp
+    local run_log status run_info nitro_tag
     
     while true; do
         sleep 5
@@ -177,10 +177,15 @@ generate_nitro_pcr0_remote() {
             
             run_log=$(gh run view "$run_id" --repo EspressoSystems/aws-nitro --log 2>/dev/null || echo "")
             keccak_hash=$(echo "$run_log" | grep -E 'PCR0 keccak hash: 0x[0-9a-fA-F]+' | tail -n1 | sed -n 's/.*PCR0 keccak hash: \(0x[0-9a-fA-F]*\).*/\1/p')
-            timestamp=$(echo "$run_log" | grep -E 'TIMESTAMP:' | tail -n1 | sed -n 's/.*TIMESTAMP: \([0-9]*\).*/\1/p')
+            nitro_tag=$(echo "$run_log" | grep -E 'NITRO_IMAGE_TAG=' | tail -n1 | sed -n 's/.*NITRO_IMAGE_TAG=\([^[:space:]]*\).*/\1/p')
             
-            if [ -n "$timestamp" ]; then
-                image_name="ghcr.io/espressosystems/aws-nitro-poster:${enclaver_image_name}-${timestamp}"
+            echo -e "${BLUE}🏷️  Extracted NITRO_IMAGE_TAG: ${nitro_tag}${NC}"
+            
+            if [ -n "$nitro_tag" ]; then
+                image_name="ghcr.io/espressosystems/aws-nitro-poster:${nitro_tag}"
+                echo -e "${BLUE}📦 Generated image name: ${image_name}${NC}"
+            else
+                echo -e "${YELLOW}⚠️  Warning: NITRO_IMAGE_TAG not found in workflow logs${NC}"
             fi
             
             NITRO_KECCAK_HASH="$keccak_hash"
