@@ -9,7 +9,8 @@ source "${SCRIPT_DIR}/config.sh"
 source "${SCRIPT_DIR}/summary_generator.sh"
 
 declare MRENCLAVE MRSIGNER RPC_URL NETWORK
-declare NITRO_RUN_ID NITRO_KECCAK_HASH NITRO_IMAGE_NAME NITRO_ENCLAVER_NAME
+declare NITRO_RUN_ID NITRO_ENCLAVER_NAME NITRO_KECCAK_HASH NITRO_IMAGE_NAME NITRO_NODE_IMAGE_PATH
+declare SGX_DOCKER_IMAGE SGX_BASE_IMAGE SGX_GSC_IMAGE
 
 # Load environment variables from repo root
 ENV_FILE="${SCRIPT_DIR}/../.env"
@@ -37,7 +38,117 @@ cleanup() {
 trap cleanup EXIT
 
 # =============================================================================
-# SGX - EXTRACT ENCLAVE VALUES
+# SGX - EXTRACT ENCLAVE VALUES VIA GITHUB WORKFLOW
+# =============================================================================
+
+generate_sgx_hash_remote() {
+    echo -e "${YELLOW}🔧 Generating SGX Image via GitHub Action${NC}"
+    require_cmd gh || {
+        echo -e "${RED}❌ GitHub CLI (gh) required. Install via:${NC}"
+        echo "  brew install gh  # macOS"
+        echo "  Or https://cli.github.com/"
+        return 1
+    }
+
+    if ! gh auth status &>/dev/null; then
+        echo -e "${RED}❌ Not logged in to GitHub. Run:${NC}"
+        echo "  gh auth login"
+        return 1
+    fi
+
+    local nitro_node_image_path
+    read -p "Enter nitro node docker image path (e.g. ghcr.io/espresso...nitro-node:integration): " nitro_node_image_path
+    
+    if [ -z "$nitro_node_image_path" ]; then
+        echo -e "${RED}❌ Docker image path is required${NC}"
+        return 1
+    fi
+
+    # Extract tag from the nitro node image to determine the GSC output image name
+    local base_tag="${nitro_node_image_path##*:}"
+    local gsc_image="ghcr.io/espressosystems/gsc-sgx-poster:${base_tag}"
+
+    echo -e "${BLUE}📦 Triggering SGX workflow in EspressoSystems/gsc...${NC}"
+    echo -e "${BLUE}🐳 Nitro node image: ${nitro_node_image_path}${NC}"
+    echo -e "${BLUE}🏗️  Will build GSC image: ${gsc_image}${NC}"
+
+    echo -e "${BLUE}⏳ Running SGX poster workflow...${NC}"
+    gh workflow run "Build SGX Poster" \
+        --repo EspressoSystems/gsc \
+        --ref image-tag-as-input \
+        -F base_image="$nitro_node_image_path"
+
+    echo "SGX Workflow triggered for nitro node image: $nitro_node_image_path"
+
+    sleep 5
+
+    local expected_run_name="Build SGX Poster - $nitro_node_image_path"
+    echo -e "${BLUE}⏳ Looking for workflow run...${NC}"
+    
+    run_list=$(gh run list --repo EspressoSystems/gsc --workflow="Build SGX Poster" --json databaseId,displayTitle)
+    run_id=$(echo "$run_list" | jq --arg name "$expected_run_name" '.[] | select(.displayTitle == $name) | .databaseId' | head -n 1) || {
+        echo -e "${RED}❌ Failed to get workflow run ID${NC}"
+        echo -e "${YELLOW}💡 Looking for run with name: ${expected_run_name}${NC}"
+        return 1
+    }
+
+    if [ -z "$run_id" ]; then
+        echo -e "${RED}❌ No valid run ID found${NC}"
+        return 1
+    fi
+
+    echo -e "${BLUE}🔗 View workflow: https://github.com/EspressoSystems/gsc/actions/runs/${run_id}${NC}"
+    echo -e "${BLUE}⏳ Waiting for build completion...${NC}"
+    local run_log status run_info
+    
+    while true; do
+        sleep 30
+        run_info=$(gh run view "$run_id" --repo EspressoSystems/gsc --json status 2>/dev/null || echo "")
+        status=$(echo "$run_info" | jq -r '.status')
+
+        case "$status" in
+            "completed")
+                echo -e "${GREEN}✅ SGX workflow completed successfully${NC}"
+                echo -e "${BLUE}🏗️  GSC image built: ${gsc_image}${NC}"
+                echo -e "${BLUE}⏳ Waiting for image to be available...${NC}"
+                sleep 30
+                echo -e "${BLUE}⏳ Extracting MRENCLAVE from GSC image...${NC}"
+                
+                if [ -f "./extract_sgx_hash.sh" ]; then
+                    MRENCLAVE=$(./extract_sgx_hash.sh "${gsc_image}" | grep "MRENCLAVE:" | cut -d' ' -f2)
+                    
+                    if [ -z "$MRENCLAVE" ]; then
+                        echo -e "${RED}❌ Could not extract MRENCLAVE from GSC image: ${gsc_image}${NC}"
+                        echo -e "${YELLOW}💡 The GSC image might not be available yet or the extraction failed${NC}"
+                        return 1
+                    fi
+                    
+                    echo -e "${GREEN}✅ MRENCLAVE: ${MRENCLAVE}${NC}"
+                    
+                    SGX_BASE_IMAGE="$nitro_node_image_path"
+                    SGX_GSC_IMAGE="$gsc_image"
+                    
+                    return 0
+                else
+                    echo -e "${RED}❌ extract_sgx_hash.sh not found${NC}"
+                    return 1
+                fi
+                ;;
+            "in_progress"|"queued")
+                ;;
+            "failed"|"cancelled")
+                echo -e "${RED}❌ SGX workflow failed with status: ${status}${NC}"
+                return 1
+                ;;
+            *)
+                echo -e "${YELLOW}⏳ Unknown status: ${status}. Continuing to wait...${NC}"
+                ;;
+        esac
+    done
+}
+
+# =============================================================================
+# SGX - LEGACY EXTRACT ENCLAVE VALUES (using report.txt)
 # =============================================================================
 
 check_report_file() {
@@ -80,16 +191,36 @@ decode_report_data() {
 extract_enclave_values() {
     echo -e "${YELLOW}🔍 Extracting enclave values...${NC}"
     
-    MRENCLAVE=$(./decode_report_data.sh | grep "MRENCLAVE:" | cut -d' ' -f2)
-    MRSIGNER=$(./decode_report_data.sh | grep "MRSIGNER:" | cut -d' ' -f2)
-    
-    if [ -z "${MRENCLAVE}" ]; then
-        echo -e "${RED}❌ Could not extract MRENCLAVE value${NC}"
-        exit 1
+    if [ -n "${SGX_DOCKER_IMAGE}" ]; then
+        echo -e "${BLUE}🐳 Using Docker image: ${SGX_DOCKER_IMAGE}${NC}"
+        
+        MRENCLAVE=$(./extract_sgx_hash.sh "${SGX_DOCKER_IMAGE}" | grep "MRENCLAVE:" | cut -d' ' -f2)
+        
+        if [ -z "${MRENCLAVE}" ]; then
+            echo -e "${RED}❌ Could not extract MRENCLAVE from Docker image: ${SGX_DOCKER_IMAGE}${NC}"
+            exit 1
+        fi
+        
+        echo -e "${GREEN}✅ MRENCLAVE extracted from Docker image: ${MRENCLAVE}${NC}"
+        
+        # For Docker-based extraction, we don't have MRSIGNER, so we'll set it to empty
+        # This is acceptable since the contract update only requires MRENCLAVE
+        MRSIGNER=""
+        echo -e "${YELLOW}ℹ️  MRSIGNER not available from Docker image extraction${NC}"
+    else
+        echo -e "${BLUE}📋 Using legacy report.txt method${NC}"
+        
+        MRENCLAVE=$(./decode_report_data.sh | grep "MRENCLAVE:" | cut -d' ' -f2)
+        MRSIGNER=$(./decode_report_data.sh | grep "MRSIGNER:" | cut -d' ' -f2)
+        
+        if [ -z "${MRENCLAVE}" ]; then
+            echo -e "${RED}❌ Could not extract MRENCLAVE value${NC}"
+            exit 1
+        fi
+        
+        echo -e "${GREEN}✅ MRENCLAVE extracted: ${MRENCLAVE}${NC}"
+        echo -e "${GREEN}✅ MRSIGNER extracted: ${MRSIGNER}${NC}"
     fi
-    
-    echo -e "${GREEN}✅ MRENCLAVE extracted: ${MRENCLAVE}${NC}"
-    echo -e "${GREEN}✅ MRSIGNER extracted: ${MRSIGNER}${NC}"
 }
 
 # =============================================================================
@@ -119,31 +250,29 @@ generate_nitro_pcr0_remote() {
         return 1
     fi
 
-    local nitro_tag
-    read -p "Enter Nitro node tag (e.g. pr-689): " nitro_tag
-    nitro_tag="${nitro_tag:-latest}"
-
-    local enclaver_image_name
-    read -p "Enter Enclaver image name (e.g. test): " enclaver_image_name
-    enclaver_image_name="${enclaver_image_name:-test}"
+    local nitro_node_image_path
+    read -p "Enter full nitro node image path (e.g. ghcr.io/espressosystems/.../nitro-node:pr-689): " nitro_node_image_path
+    
+    if [ -z "$nitro_node_image_path" ]; then
+        echo -e "${RED}❌ Nitro node image path is required${NC}"
+        return 1
+    fi
 
     echo -e "${BLUE}📦 Triggering workflow in EspressoSystems/aws-nitro...${NC}"
+    echo -e "${BLUE}🐳 Nitro node image: ${nitro_node_image_path}${NC}"
 
     echo -e "${BLUE}⏳ Running workflow and capturing run ID...${NC}"
     gh workflow run "Build Enclaver Docker Image" \
         --repo EspressoSystems/aws-nitro \
-        -F nitro_node_image_tag="$nitro_tag" \
-        -F enclaver_image_name="$enclaver_image_name" \
+        --ref add-image-tag \
+        -F nitro_node_image_path="$nitro_node_image_path" \
         -F config_hash="0000000000000000000000000000000000000000000000000000000000000000"
-
-
-    echo "Gh Run Name: Build Enclaver Docker Image - $enclaver_image_name"
 
     sleep 5
 
+    local expected_run_name="Enclaver Docker Image - $nitro_node_image_path"
     run_list=$(gh run list --repo EspressoSystems/aws-nitro --workflow="Build Enclaver Docker Image" --json databaseId,displayTitle)
-
-    run_id=$(echo "$run_list" | jq --arg name "$enclaver_image_name" '.[] | select(.displayTitle | contains($name)) | .databaseId' | head -n 1) || {
+    run_id=$(echo "$run_list" | jq --arg name "$expected_run_name" '.[] | select(.displayTitle == $name) | .databaseId' | head -n 1) || {
         echo -e "${RED}❌ Failed to get workflow run ID${NC}"
         return 1
     }
@@ -152,17 +281,16 @@ generate_nitro_pcr0_remote() {
         echo -e "${RED}❌ No valid run ID found${NC}"
         return 1
     fi
-    echo "Retrieved run ID: $run_id"
     
     NITRO_RUN_ID="$run_id"
-    NITRO_ENCLAVER_NAME="$enclaver_image_name"
 
     gh repo set-default EspressoSystems/aws-nitro || {
         echo -e "${RED}❌ Failed to set default repository for gh CLI${NC}"
         return 1
     }
 
-    echo -e "${BLUE}🔄 Running GitHub Actions workflow...${NC}"
+    echo -e "${BLUE}🔗 View workflow: https://github.com/EspressoSystems/aws-nitro/actions/runs/${run_id}${NC}"
+    echo -e "${BLUE}⏳ Waiting for build completion...${NC}"
     local run_log status run_info nitro_tag
     
     while true; do
@@ -177,19 +305,23 @@ generate_nitro_pcr0_remote() {
             
             run_log=$(gh run view "$run_id" --repo EspressoSystems/aws-nitro --log 2>/dev/null || echo "")
             keccak_hash=$(echo "$run_log" | grep -E 'PCR0 keccak hash: 0x[0-9a-fA-F]+' | tail -n1 | sed -n 's/.*PCR0 keccak hash: \(0x[0-9a-fA-F]*\).*/\1/p')
-            nitro_tag=$(echo "$run_log" | grep -E 'NITRO_IMAGE_TAG=' | tail -n1 | sed -n 's/.*NITRO_IMAGE_TAG=\([^[:space:]]*\).*/\1/p')
             
-            echo -e "${BLUE}🏷️  Extracted NITRO_IMAGE_TAG: ${nitro_tag}${NC}"
+            local tag="${nitro_node_image_path##*:}"
+            image_name="ghcr.io/espressosystems/aws-nitro-poster:${tag}"
+            echo -e "${BLUE}📦 Generated image name: ${image_name}${NC}"
             
-            if [ -n "$nitro_tag" ]; then
-                image_name="ghcr.io/espressosystems/aws-nitro-poster:${nitro_tag}"
-                echo -e "${BLUE}📦 Generated image name: ${image_name}${NC}"
-            else
-                echo -e "${YELLOW}⚠️  Warning: NITRO_IMAGE_TAG not found in workflow logs${NC}"
+            # Quick check if image is available
+            if ! docker manifest inspect "$image_name" &>/dev/null; then
+                echo -e "${YELLOW}⚠️  Warning: Image not yet available${NC}"
             fi
             
+            local enclaver_name="${nitro_node_image_path##*:}"
+            
+            NITRO_RUN_ID="$run_id"
+            NITRO_ENCLAVER_NAME="$enclaver_name"
             NITRO_KECCAK_HASH="$keccak_hash"
             NITRO_IMAGE_NAME="$image_name"
+            NITRO_NODE_IMAGE_PATH="$nitro_node_image_path"
             MRENCLAVE="${keccak_hash#0x}"
             break
         fi
@@ -219,20 +351,25 @@ generate_nitro_pcr0_remote() {
 # CONTRACT INTERACTION
 # =============================================================================
 
-prepare_contract_interaction() {
-    echo -e "${YELLOW}🔗 Preparing contract update...${NC}"
+generate_summary() {
+    echo -e "${YELLOW}📄 Generating summary files...${NC}"
     
     if [ "$TEE_TYPE" = "sgx" ]; then
-        echo -e "${BLUE}🔍 Extracting SGX enclave values...${NC}"
-        extract_enclave_values
+        echo -e "${GREEN}✅ SGX MRENCLAVE ready for contract update: ${MRENCLAVE}${NC}"
         
-        local summary_file=$(generate_sgx_summary "$MRENCLAVE" "$MRSIGNER" "$REPORT_FILE")
+        # For legacy method, we have MRSIGNER and REPORT_FILE. For remote method, we don't.
+        # For remote method, we have docker images. For legacy method, we don't.
+        local mrsigner_param="${MRSIGNER:-}"
+        local report_file_param="${REPORT_FILE:-}"
+        local base_image_param="${SGX_BASE_IMAGE:-}"
+        local gsc_image_param="${SGX_GSC_IMAGE:-}"
+        
+        local summary_file=$(generate_sgx_summary "$MRENCLAVE" "$mrsigner_param" "$report_file_param" "$base_image_param" "$gsc_image_param")
         echo -e "${GREEN}✅ Summary saved to ${summary_file}${NC}"
     else
-        echo -e "${BLUE}🔍 Using AWS Nitro PCR0 hash...${NC}"
-        echo -e "${GREEN}✅ MRENCLAVE ready for contract update: ${MRENCLAVE}${NC}"
+        echo -e "${GREEN}✅ AWS Nitro MRENCLAVE ready for contract update: ${MRENCLAVE}${NC}"
         
-        local summary_file=$(generate_nitro_summary "$NITRO_RUN_ID" "$NITRO_ENCLAVER_NAME" "$NITRO_KECCAK_HASH" "$NITRO_IMAGE_NAME" "$MRENCLAVE")
+        local summary_file=$(generate_nitro_summary "$NITRO_RUN_ID" "$NITRO_NODE_IMAGE_PATH" "$NITRO_KECCAK_HASH" "$NITRO_IMAGE_NAME" "$MRENCLAVE")
         echo -e "${GREEN}✅ Summary saved to ${summary_file}${NC}"
     fi
 }
@@ -446,7 +583,6 @@ get_private_key() {
     
     PRIVATE_KEY="$NEW_PRIVATE_KEY"
     echo -e "${GREEN}✅ Private key set${NC}"
-    return 0
 }
 
 display_update_command() {
@@ -515,7 +651,7 @@ run_contract_update_workflow() {
     echo ""
     
     # Optional
-    echo -e "${BLUE}📋 Step 4/6: Contract Owner Lookup${NC}"
+    echo -e "${BLUE}📋 Step 5/7: Contract Owner Lookup${NC}"
     echo "----------------------------------------"
     read -p "Would you like to get the TEE contract owner address? (y/n): " -n 1 -r
     echo
@@ -527,12 +663,12 @@ run_contract_update_workflow() {
         echo ""
     fi
     
-    echo -e "${BLUE}📋 Step 5/6: Display Update Command${NC}"
+    echo -e "${BLUE}📋 Step 6/7: Display Update Command${NC}"
     echo "----------------------------------------"
     display_update_command
     echo ""
     
-    echo -e "${BLUE}📋 Step 6/6: Execute Contract Update${NC}"
+    echo -e "${BLUE}📋 Step 7/7: Execute Contract Update${NC}"
     echo "----------------------------------------"
     send_contract_transaction
 }
@@ -545,11 +681,12 @@ show_usage() {
     echo -e "${BLUE}🔍 MR Enclave Update Automation${NC}"
     echo "============================================="
     echo ""
-    echo "Usage: $0 [OPTION]"
+    echo "Usage: $0 [OPTION] [SGX_DOCKER_IMAGE]"
     echo ""
     echo "Options:"
-    echo "  (no args)  - Full automation with contract update"
-    echo "  --help     - Show this help"
+    echo "  (no args)           - Full automation with contract update (legacy report.txt method)"
+    echo "  --sgx-docker IMAGE  - SGX automation using Docker image extraction"
+    echo "  --help              - Show this help"
     echo ""
     echo "Environment Variables:"
     echo "  MAIN_TEE_VERIFIER_ADDRESS - Main EspressoTEEVerifier contract address (.env file)"
@@ -560,8 +697,9 @@ show_usage() {
     echo "  ARBITRUM_SEPOLIA_RPC - Arbitrum Sepolia RPC URL"
     echo ""
     echo "Examples:"
-    echo "  $0                    # Full automation with contract update"
-    echo "  $0 --help            # Show help"
+    echo "  $0                                        # Full automation with contract update (report.txt)"
+    echo "  $0 --sgx-docker myregistry/sgx-app:v1.0  # SGX automation using Docker image"
+    echo "  $0 --help                                # Show help"
     echo ""
     echo "  # With .env file containing MAIN_TEE_VERIFIER_ADDRESS"
     echo "  cp env.template .env  # Copy template and edit"
@@ -569,11 +707,6 @@ show_usage() {
 }
 
 display_next_steps() {
-    echo ""
-    echo -e "${GREEN}🎉 Automation Complete!${NC}"
-    echo "========================================"
-    echo -e "${BLUE}📋 Next Steps:${NC}"
-    echo "Review the enclave update summary"
     echo ""
     echo -e "${YELLOW}🔗 Option 1: Use the script (recommended)${NC}"
     echo "   - Continue with the script to get the contract owner and update command"
@@ -591,7 +724,6 @@ display_next_steps() {
     echo "     * enclaveHash: 0x${MRENCLAVE}"
     echo "     * valid: true"
     echo ""
-    echo -e "${YELLOW}💡 All data has been saved to files for reference${NC}"
 }
 
 # =============================================================================
@@ -605,7 +737,7 @@ full_automation() {
     echo -e "${GREEN}🛡️  TRUSTED EXECUTION ENVIRONMENTS${NC}"
     echo ""
     echo -e "   ${YELLOW}1.${NC}  🔷 Intel SGX"
-    echo -e "       └─ Uses existing enclave data (report.txt)"
+    echo -e "       └─ GitHub workflow (recommended) or legacy report.txt"
     echo ""
     echo -e "   ${YELLOW}2.${NC}  ☁️  AWS Nitro Enclaves"
     echo -e "       └─ Generates Image and PCR0 hash via GitHub Actions"
@@ -630,35 +762,117 @@ full_automation() {
 
     case "$REPLY" in
         2)
-            echo -e "${BLUE}📋 Step 1/6: AWS Nitro PCR0 Generation${NC}"
+            echo -e "${BLUE}📋 Step 1/7: AWS Nitro PCR0 Generation${NC}"
             echo "----------------------------------------"
             generate_nitro_pcr0_remote
             echo ""
             ;;
         1|*)
-            echo -e "${BLUE}📋 Step 1/6: Processing SGX Enclave Data${NC}"
+            echo -e "${BLUE}📋 Step 1/7: SGX Enclave Image & Hash Generation${NC}"
             echo "----------------------------------------"
-            check_report_file
-            convert_to_binary
-            decode_report_data
+            if [ -n "${SGX_DOCKER_IMAGE}" ]; then
+                echo -e "${BLUE}🐳 Using Docker image extraction method${NC}"
+                echo -e "${GREEN}✅ Docker image: ${SGX_DOCKER_IMAGE}${NC}"
+            else
+                echo ""
+                echo -e "${YELLOW}🔍 Choose SGX processing method:${NC}"
+                echo -e "   ${YELLOW}1.${NC}  🏗️  Generate GSC image and extract MRENCLAVE"
+                echo -e "   ${YELLOW}2.${NC}  📋 Use existing report.txt file (legacy)"
+                echo ""
+                read -p "Select method (1-2): " -n 1 -r
+                echo
+                echo ""
+                
+                case "$REPLY" in
+                    2)
+                        echo -e "${BLUE}📋 Using legacy report.txt method${NC}"
+                        check_report_file
+                        convert_to_binary
+                        decode_report_data
+                        extract_enclave_values
+                        ;;
+                    1|*)
+                        echo -e "${BLUE}🏗️  Building GSC image and extracting MRENCLAVE${NC}"
+                        generate_sgx_hash_remote
+                        ;;
+                esac
+            fi
             echo ""
             ;;
     esac
     
-    echo -e "${BLUE}📋 Step 2/6: Preparing Contract Interaction${NC}"
-    echo "----------------------------------------"
-    prepare_contract_interaction
-    echo ""
-
-    echo -e "${BLUE}📋 Step 3/6: Ready for Contract Update${NC}"
+    echo -e "${BLUE}📋 Step 2/7: Next Steps${NC}"
     echo "----------------------------------------"
     display_next_steps
+    echo ""
+    
+    echo -e "${BLUE}📋 Step 3/7: Generate Summary${NC}"
+    echo "----------------------------------------"
+    generate_summary
+    echo ""
+
+    echo -e "${YELLOW}💡 Next steps will prepare the contract update command. You'll be asked for confirmation before any actual contract update.${NC}"
+    echo ""
+
+    echo -e "${BLUE}📋 Step 4/7: Contract Update Setup${NC}"
+    echo "----------------------------------------"
 }
 
 main() {
     case "${1:-}" in
         --help|-h)
             show_usage
+            ;;
+        --sgx-docker)
+            if [ -z "${2:-}" ]; then
+                echo -e "${RED}❌ Error: --sgx-docker requires a Docker image path${NC}"
+                echo ""
+                show_usage
+                exit 1
+            fi
+            SGX_DOCKER_IMAGE="$2"
+            TEE_TYPE="sgx"
+            echo -e "${BLUE}🔍 Starting SGX Docker Image Automation${NC}"
+            echo "======================================================="
+            echo -e "${GREEN}🐳 Docker Image: ${SGX_DOCKER_IMAGE}${NC}"
+            echo ""
+            
+            echo -e "${BLUE}📋 Step 1/7: Processing SGX Enclave Data${NC}"
+            echo "----------------------------------------"
+            echo -e "${BLUE}🚀 Using remote GitHub workflow method${NC}"
+            
+            echo -e "${BLUE}🐳 Processing Docker image: ${SGX_DOCKER_IMAGE}${NC}"
+            
+            if [ -f "./extract_sgx_hash.sh" ]; then
+                MRENCLAVE=$(./extract_sgx_hash.sh "${SGX_DOCKER_IMAGE}" | grep "MRENCLAVE:" | cut -d' ' -f2)
+                if [ -n "$MRENCLAVE" ]; then
+                    echo -e "${GREEN}✅ MRENCLAVE extracted: ${MRENCLAVE}${NC}"
+                else
+                    echo -e "${RED}❌ Failed to extract MRENCLAVE${NC}"
+                    exit 1
+                fi
+            else
+                echo -e "${RED}❌ extract_sgx_hash.sh not found${NC}"
+                exit 1
+            fi
+            echo ""
+            
+            echo -e "${BLUE}📋 Step 2/7: Next Steps${NC}"
+            echo "----------------------------------------"
+            display_next_steps
+            echo ""
+            
+            echo -e "${BLUE}📋 Step 3/7: Generate Summary${NC}"
+            echo "----------------------------------------"
+            generate_summary
+            echo ""
+
+            echo -e "${YELLOW}💡 Next steps will prepare the contract update command. You'll be asked for confirmation before any actual contract update.${NC}"
+            echo ""
+
+            echo -e "${BLUE}📋 Step 4/7: Contract Update Setup${NC}"
+            echo "----------------------------------------"
+            prompt_contract_update
             ;;
         "")
             full_automation

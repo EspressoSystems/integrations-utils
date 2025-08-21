@@ -2,6 +2,13 @@
 
 This folder contains tools for processing MR enclave data and updating an existing TEE contract with the new enclave hash value.
 
+## Related Repositories
+
+This tool integrates with the following GitHub repositories for automated image building:
+
+- **[EspressoSystems/gsc](https://github.com/EspressoSystems/gsc)** - Gramine Shielded Containers for Intel SGX image generation
+- **[EspressoSystems/aws-nitro](https://github.com/EspressoSystems/aws-nitro)** - AWS Nitro Enclaves image generation
+
 ## What This Does
 
 - **Processes enclave data** from your report.txt file
