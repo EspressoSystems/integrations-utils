@@ -18,22 +18,18 @@ fi
 select_target_chain() {
     echo ""
     echo -e "${BLUE}🌐 Chain Selection${NC}"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
+    echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
     echo -e "${BLUE}🧪 TESTNETS${NC}"
     echo -e "   ${YELLOW}1.${NC}  Rari Testnet"
     echo -e "   ${YELLOW}2.${NC}  LogX Testnet"
-    echo -e "   ${YELLOW}3.${NC}  Appchain Testnet"
-    echo ""
+    echo -e "   ${YELLOW}3.${NC}  Appchain Testnet\n"
     echo -e "${GREEN}📡 MAINNETS${NC}"
     echo -e "   ${YELLOW}4.${NC}  Rari Mainnet"
     echo -e "   ${YELLOW}5.${NC}  LogX Mainnet"
     echo -e "   ${YELLOW}6.${NC}  Appchain Mainnet"
-    echo -e "   ${YELLOW}7.${NC}  Molten Mainnet"
-    echo ""
+    echo -e "   ${YELLOW}7.${NC}  Molten Mainnet\n"
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    read -p "Select target chain (1-7): " -n 1 -r
-    echo ""
+    read -p "Select target chain (1-7): " -n 1 -r \n
     echo
     
     case $REPLY in
@@ -122,6 +118,7 @@ get_tee_verifier_address() {
     fi
     
     if [ -n "${CONTRACT_ADDRESS}" ] && [ "${CONTRACT_ADDRESS}" != "0x" ]; then
+        echo -e
         return 0
     else
         if [ "$TEE_TYPE" = "nitro" ]; then
@@ -143,8 +140,7 @@ get_contract_owner() {
     else
         echo -e "${YELLOW}🔄 Getting SGX TEE verifier contract owner...${NC}"
     fi
-    echo -e "${BLUE}📋 Checking owner of: ${CONTRACT_ADDRESS}${NC}"
-    echo ""
+    echo -e "${BLUE}📋 Checking owner of: ${CONTRACT_ADDRESS}${NC} \n"
     
     if cast call "${CONTRACT_ADDRESS}" "owner()" --rpc-url "${RPC_URL}" 2>/dev/null; then
         OWNER_ADDRESS=$(cast call "${CONTRACT_ADDRESS}" "owner()" --rpc-url "${RPC_URL}" 2>/dev/null | sed 's/^0x000000000000000000000000/0x/' 2>/dev/null)
@@ -163,8 +159,7 @@ get_contract_owner() {
         fi
         echo -e "${YELLOW}💡 Common issues:${NC}"
         echo "   - Contract address is incorrect"
-        echo "   - RPC endpoint is invalid or not responding"
-        echo ""
+        echo "   - RPC endpoint is invalid or not responding \n"
         echo -e "${YELLOW}💡 Would you like to install 'cast' (Foundry's command-line tool)?${NC}"
         echo "This is required for contract interaction."
         read -p "Install cast now? (y/n): " -n 1 -r
@@ -233,8 +228,7 @@ get_private_key() {
 
 display_update_command() {
     echo -e "${BLUE}📋 Complete command to update the contract:${NC}"
-    echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key YOUR_PRIVATE_KEY"
-    echo ""
+    echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key YOUR_PRIVATE_KEY \n" 
     echo -e "${YELLOW}⚠️  WARNING: Never share your private key and be careful with --private-key flag${NC}"
     echo -e "${YELLOW}💡 Replace YOUR_PRIVATE_KEY with the actual private key${NC}"
 }
@@ -250,14 +244,12 @@ send_contract_transaction() {
     
     echo ""
     echo -e "${BLUE}📋 Ready to execute contract update:${NC}"
-    echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key ${PRIVATE_KEY:0:8}..."
-    echo ""
+    echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key ${PRIVATE_KEY:0:8}... \n"
     echo -e "${YELLOW}⚠️  This will actually update the contract on ${NETWORK}${NC}"
     read -p "Are you ready to execute this command? (y/n): " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo -e "${YELLOW}🚀 Executing contract update...${NC}"
-        echo ""
+        echo -e "${YELLOW}🚀 Executing contract update...${NC} \n"
         if cast send "${CONTRACT_ADDRESS}" "setEnclaveHash(bytes32,bool)" "0x${MRENCLAVE}" true --rpc-url "${RPC_URL}" --private-key "${PRIVATE_KEY}"; then
             echo -e "${GREEN}✅ Contract update successful!${NC}"
             echo -e "${GREEN}🎉 The enclave hash has been updated on ${NETWORK}${NC}"
@@ -266,9 +258,7 @@ send_contract_transaction() {
             echo -e "${YELLOW}💡 Check the error message above for details${NC}"
         fi
     else
-        echo ""
-        echo -e "${YELLOW}💡 Command execution cancelled${NC}"
-        echo ""
+        echo -e "\n${YELLOW}💡 Command execution cancelled${NC}\n"
     fi
 }
 
@@ -297,7 +287,7 @@ run_contract_update_workflow() {
     echo "Function: setEnclaveHash (0x93b5552e)"
     echo "Parameters:"
     echo "  - enclaveHash: 0x${MRENCLAVE}"
-    echo "  - valid: true"
+    echo "  - valid: true \n"
     echo ""
     
     # Optional
