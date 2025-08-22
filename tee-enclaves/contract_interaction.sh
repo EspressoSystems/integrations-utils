@@ -39,43 +39,43 @@ select_target_chain() {
     case $REPLY in
         1)
             CHAIN_NAME="Rari Testnet"
-            SEQUENCER_INBOX_ADDRESS="${RARI_TESTNET_INBOX_ADDRESS}"
+            SEQUENCER_INBOX_ADDRESS="${RARI_TESTNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ARBITRUM_SEPOLIA_RPC}"  # Rari testnet settles on Arbitrum Sepolia
             NETWORK="Arbitrum Sepolia (Rari Testnet)"
             ;;
         2)
             CHAIN_NAME="LogX Testnet"
-            SEQUENCER_INBOX_ADDRESS="${LOGX_TESTNET_INBOX_ADDRESS}"
+            SEQUENCER_INBOX_ADDRESS="${LOGX_TESTNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ETHEREUM_SEPOLIA_RPC}"  # LogX testnet settles on Ethereum Sepolia
             NETWORK="Ethereum Sepolia (LogX Testnet)"
             ;;
         3)
             CHAIN_NAME="Appchain Testnet"
-            SEQUENCER_INBOX_ADDRESS="${APPCHAIN_TESTNET_INBOX_ADDRESS}"
+            SEQUENCER_INBOX_ADDRESS="${APPCHAIN_TESTNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ETHEREUM_SEPOLIA_RPC}"  # Appchain testnet settles on Ethereum Sepolia
             NETWORK="Ethereum Sepolia (Appchain Testnet)"
             ;;
         4)
             CHAIN_NAME="Rari Mainnet"
-            SEQUENCER_INBOX_ADDRESS="${RARI_MAINNET_INBOX_ADDRESS}"
+            SEQUENCER_INBOX_ADDRESS="${RARI_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ARBITRUM_MAINNET_RPC}"  # Rari mainnet settles on Arbitrum One
             NETWORK="Arbitrum One (Rari Mainnet)"
             ;;
         5)
             CHAIN_NAME="LogX Mainnet"
-            SEQUENCER_INBOX_ADDRESS="${LOGX_MAINNET_INBOX_ADDRESS}"
+            SEQUENCER_INBOX_ADDRESS="${LOGX_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ETHEREUM_MAINNET_RPC}"  # LogX mainnet settles on Ethereum Mainnet
             NETWORK="Ethereum Mainnet (LogX Mainnet)"
             ;;
         6)
             CHAIN_NAME="Appchain Mainnet"
-            SEQUENCER_INBOX_ADDRESS="${APPCHAIN_MAINNET_INBOX_ADDRESS}"
+            SEQUENCER_INBOX_ADDRESS="${APPCHAIN_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ETHEREUM_MAINNET_RPC}"  # Appchain mainnet settles on Ethereum Mainnet
             NETWORK="Ethereum Mainnet (Appchain Mainnet)"
             ;;
         7)
             CHAIN_NAME="Molten Mainnet"
-            SEQUENCER_INBOX_ADDRESS="${MOLTEN_MAINNET_INBOX_ADDRESS}"
+            SEQUENCER_INBOX_ADDRESS="${MOLTEN_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ARBITRUM_MAINNET_RPC}"  # Molten mainnet settles on Arbitrum One
             NETWORK="Arbitrum One (Molten Mainnet)"
             ;;
