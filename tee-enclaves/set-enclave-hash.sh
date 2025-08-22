@@ -481,6 +481,8 @@ select_network_rpc() {
 }
 
 prompt_contract_update() {
+    local workflow_mode="${1:-image_generation}"
+    
     echo ""
     echo -e "${YELLOW}🔗 Contract Update Setup${NC}"
     echo "==============================="
@@ -497,7 +499,7 @@ prompt_contract_update() {
         return
     fi
     
-    run_contract_update_workflow
+    run_contract_update_workflow "$workflow_mode"
 }
 
 get_contract_owner() {
@@ -586,14 +588,33 @@ get_private_key() {
 }
 
 display_update_command() {
+    local workflow_mode="${1:-image_generation}"
+    
     echo -e "${BLUE}📋 Complete command to update the contract:${NC}"
-    echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key YOUR_PRIVATE_KEY"
+    # Regenerating an image from the same tag won't result in the same enclave hash in AWS Nitro
+    # This will prevent the user from unregistering a hash that has not been registered in the contract
+    if [ "$workflow_mode" = "contract_only" ] || [ "$TEE_TYPE" = "sgx" ]; then
+        echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} [true|false] --rpc-url ${RPC_URL} --private-key YOUR_PRIVATE_KEY"
+        echo ""
+        echo -e "${YELLOW}💡 [true|false] will be set based on your choice in the next step${NC}"
+    else
+        echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key YOUR_PRIVATE_KEY"
+    fi
     echo ""
     echo -e "${YELLOW}⚠️  WARNING: Never share your private key and be careful with --private-key flag${NC}"
     echo -e "${YELLOW}💡 Replace YOUR_PRIVATE_KEY with the actual private key${NC}"
 }
 
 send_contract_transaction() {
+    local operation="${1:-register}"
+    local valid_param="true"
+    local operation_text="register"
+    
+    if [ "$operation" = "unregister" ]; then
+        valid_param="false"
+        operation_text="unregister"
+    fi
+    
     echo ""
     echo -e "${YELLOW}🔑 Setting up private key for contract execution...${NC}"
     
@@ -604,17 +625,21 @@ send_contract_transaction() {
     
     echo ""
     echo -e "${BLUE}📋 Ready to execute contract update:${NC}"
-    echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key ${PRIVATE_KEY:0:8}..."
+    echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} ${valid_param} --rpc-url ${RPC_URL} --private-key ${PRIVATE_KEY:0:8}..."
     echo ""
-    echo -e "${YELLOW}⚠️  This will actually update the contract on ${NETWORK}${NC}"
+    echo -e "${YELLOW}⚠️  This will ${operation_text} the enclave hash on ${NETWORK}${NC}"
     read -p "Are you ready to execute this command? (y/n): " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo -e "${YELLOW}🚀 Executing contract update...${NC}"
         echo ""
-        if cast send "${CONTRACT_ADDRESS}" "setEnclaveHash(bytes32,bool)" "0x${MRENCLAVE}" true --rpc-url "${RPC_URL}" --private-key "${PRIVATE_KEY}"; then
+        if cast send "${CONTRACT_ADDRESS}" "setEnclaveHash(bytes32,bool)" "0x${MRENCLAVE}" "${valid_param}" --rpc-url "${RPC_URL}" --private-key "${PRIVATE_KEY}"; then
             echo -e "${GREEN}✅ Contract update successful!${NC}"
-            echo -e "${GREEN}🎉 The enclave hash has been updated on ${NETWORK}${NC}"
+            if [ "$operation" = "register" ]; then
+                echo -e "${GREEN}🎉 The enclave hash has been registered on ${NETWORK}${NC}"
+            else
+                echo -e "${GREEN}🎉 The enclave hash has been unregistered on ${NETWORK}${NC}"
+            fi
         else
             echo -e "${RED}❌ Contract update failed${NC}"
             echo -e "${YELLOW}💡 Check the error message above for details${NC}"
@@ -627,6 +652,8 @@ send_contract_transaction() {
 }
 
 run_contract_update_workflow() {
+    local workflow_mode="${1:-image_generation}"
+    
     echo -e "${YELLOW}🚀 Contract Update Command${NC}"
     echo "==============================="
     echo ""
@@ -647,7 +674,13 @@ run_contract_update_workflow() {
     echo "Function: setEnclaveHash (0x93b5552e)"
     echo "Parameters:"
     echo "  - enclaveHash: 0x${MRENCLAVE}"
-    echo "  - valid: true"
+    # Regenerating an image from the same tag won't result in the same enclave hash in AWS Nitro
+    # This will prevent the user from unregistering a hash that has not been registered in the contract
+    if [ "$workflow_mode" = "contract_only" ] || [ "$TEE_TYPE" = "sgx" ]; then
+        echo "  - valid: (will be set based on your choice)"
+    else
+        echo "  - valid: true (registering new hash)"
+    fi
     echo ""
     
     # Optional
@@ -665,12 +698,42 @@ run_contract_update_workflow() {
     
     echo -e "${BLUE}📋 Step 6/7: Display Update Command${NC}"
     echo "----------------------------------------"
-    display_update_command
+    display_update_command "$workflow_mode"
     echo ""
     
     echo -e "${BLUE}📋 Step 7/7: Execute Contract Update${NC}"
     echo "----------------------------------------"
-    send_contract_transaction
+    
+    if [ "$workflow_mode" = "contract_only" ] || [ "$TEE_TYPE" = "sgx" ]; then
+        echo -e "${YELLOW}🔧 Operation Type:${NC}"
+        echo -e "   ${YELLOW}1.${NC}  ✅ Register enclave hash (set valid=true)"
+        echo -e "   ${YELLOW}2.${NC}  ❌ Unregister enclave hash (set valid=false)"
+        echo ""
+        read -p "Select operation (1-2): " -n 1 -r
+        echo
+        echo ""
+        
+        case "$REPLY" in
+            2)
+                echo -e "${RED}⚠️  You selected to UNREGISTER the enclave hash${NC}"
+                echo -e "${RED}⚠️  This will mark the hash as invalid in the contract${NC}"
+                echo ""
+                send_contract_transaction "unregister"
+                ;;
+            1|*)
+                echo -e "${GREEN}✅ You selected to REGISTER the enclave hash${NC}"
+                echo ""
+                send_contract_transaction "register"
+                ;;
+        esac
+    else
+        # Regenerating an image from the same tag won't result in the same enclave hash in AWS Nitro
+        # This will prevent the user from unregistering a hash that has not been registered in the contract
+        echo -e "${BLUE}ℹ️  AWS Nitro generates unique hashes per build${NC}"
+        echo -e "${BLUE}ℹ️  Proceeding with REGISTER operation${NC}"
+        echo ""
+        send_contract_transaction "register"
+    fi
 }
 
 # =============================================================================
@@ -686,6 +749,7 @@ show_usage() {
     echo "Options:"
     echo "  (no args)           - Full automation with contract update (legacy report.txt method)"
     echo "  --sgx-docker IMAGE  - SGX automation using Docker image extraction"
+    echo "  --contract-only     - Contract-only mode: input hash directly and update contract"
     echo "  --help              - Show this help"
     echo ""
     echo "Environment Variables:"
@@ -699,11 +763,18 @@ show_usage() {
     echo "Examples:"
     echo "  $0                                        # Full automation with contract update (report.txt)"
     echo "  $0 --sgx-docker myregistry/sgx-app:v1.0  # SGX automation using Docker image"
+    echo "  $0 --contract-only                       # Register/unregister hash directly"
     echo "  $0 --help                                # Show help"
     echo ""
     echo "  # With .env file containing MAIN_TEE_VERIFIER_ADDRESS"
     echo "  cp env.template .env  # Copy template and edit"
     echo "  $0                    # Run automation"
+    echo ""
+    echo "Contract-Only Mode:"
+    echo "  Use --contract-only when you already have an enclave hash and want to:"
+    echo "  • Register it in the TEE verifier contract (set valid=true)"
+    echo "  • Unregister it from the TEE verifier contract (set valid=false)"
+    echo "  This mode skips image generation/extraction and goes directly to contract interaction."
 }
 
 display_next_steps() {
@@ -729,6 +800,62 @@ display_next_steps() {
 # =============================================================================
 # MAIN LOGIC
 # =============================================================================
+
+contract_only_automation() {
+    echo -e "${BLUE}🔍 Contract-Only Hash Update${NC}"
+    echo "======================================================="
+    echo ""
+    
+    echo -e "${YELLOW}📝 Please enter the enclave hash you want to register/unregister${NC}"
+    echo -e "${YELLOW}💡 This should be a 64-character hex string (with or without 0x prefix)${NC}"
+    echo ""
+    
+    read -p "Enter enclave hash: " input_hash
+    
+    if [ -z "$input_hash" ]; then
+        echo -e "${RED}❌ No hash provided${NC}"
+        exit 1
+    fi
+    
+    # Remove 0x prefix if present
+    input_hash="${input_hash#0x}"
+    
+    if [[ ! "$input_hash" =~ ^[0-9a-fA-F]{64}$ ]]; then
+        echo -e "${RED}❌ Invalid hash format. Must be 64 hex characters${NC}"
+        echo -e "${YELLOW}💡 Example: abcd1234...0123 (64 characters total)${NC}"
+        exit 1
+    fi
+    
+    MRENCLAVE="$input_hash"
+    echo -e "${GREEN}✅ Hash validated: ${MRENCLAVE}${NC}"
+    echo ""
+    
+    echo -e "${BLUE}📋 TEE Type Selection${NC}"
+    echo "----------------------------------------"
+    echo -e "${YELLOW}🛡️  Select the TEE type for this hash:${NC}"
+    echo -e "   ${YELLOW}1.${NC}  🔷 Intel SGX"
+    echo -e "   ${YELLOW}2.${NC}  ☁️  AWS Nitro Enclaves"
+    echo ""
+    read -p "Select TEE type (1-2): " -n 1 -r
+    echo
+    echo ""
+    
+    case "$REPLY" in
+        2)
+            TEE_TYPE="nitro"
+            echo -e "${GREEN}✅ Selected: AWS Nitro Enclaves${NC}"
+            ;;
+        1|*)
+            TEE_TYPE="sgx"
+            echo -e "${GREEN}✅ Selected: Intel SGX${NC}"
+            ;;
+    esac
+    echo ""
+    
+    echo -e "${BLUE}📋 Contract Update Setup${NC}"
+    echo "----------------------------------------"
+    prompt_contract_update "contract_only"
+}
 
 full_automation() {
     echo ""
@@ -822,6 +949,9 @@ main() {
     case "${1:-}" in
         --help|-h)
             show_usage
+            ;;
+        --contract-only)
+            contract_only_automation
             ;;
         --sgx-docker)
             if [ -z "${2:-}" ]; then
