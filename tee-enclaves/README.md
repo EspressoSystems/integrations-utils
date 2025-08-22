@@ -1,6 +1,6 @@
-# MR Enclave Update Tools
+# MR Enclave Update Automation
 
-This folder contains tools for processing MR enclave data and updating an existing TEE contract with the new enclave hash value.
+This folder contains tools for processing MR enclave data and updating TEE contracts with new enclave hash values. The main script supports multiple workflows including SGX image generation, AWS Nitro PCR0 generation, and direct contract updates.
 
 ## Related Repositories
 
@@ -11,16 +11,19 @@ This tool integrates with the following GitHub repositories for automated image 
 
 ## What This Does
 
-- **Processes enclave data** from your report.txt file
-- **Updates an existing contract** by calling `setEnclaveHash()` function
-- **Does NOT deploy contracts** - the contract must already exist
-- **Does NOT verify contracts** - this is about updating values
+- **Processes enclave data** from report.txt files or Docker images
+- **Generates SGX images** via GitHub Actions workflows
+- **Generates AWS Nitro PCR0 hashes** via GitHub Actions workflows
+- **Updates existing contracts** by calling `setEnclaveHash()` function
+- **Supports contract-only mode** for direct hash registration/unregistration
 
 ## Files
 
-- `automate_enclave_verification.sh` - Main automation script with 6-step workflow
+- `set-enclave-hash.sh` - Main automation script with multiple workflow modes
+- `config.sh` - Configuration values and environment setup
+- `summary_generator.sh` - Summary file generation
+- `extract_sgx_hash.sh` - SGX hash extraction from Docker images
 - `decode_report_data.sh` - Decodes enclave report data
-- `config.sh` - Configuration values
 - `env.template` - Environment variables template
 - `README.md` - This file
 
@@ -33,35 +36,43 @@ This tool integrates with the following GitHub repositories for automated image 
    ```
 
 2. **Edit `.env` file:**
-   - Set `TEE_SGX_ADDRESS` to your existing contract address
+   - Set `MAIN_TEE_VERIFIER_ADDRESS` to your existing TEE verifier contract address
    - Optionally set `PRIVATE_KEY` for automatic execution
-   - Customize RPC URLs if needed
+   - Customize RPC URLs if needed (Ethereum Mainnet, Arbitrum Mainnet, Sepolia testnets)
 
 ## Usage
 
-1. Place your `report.txt` file with enclave hash data in this folder
-2. Run the automation: `./automate_enclave_verification.sh`
-3. Follow the 6-step workflow to update your contract
+The main script supports multiple workflow modes:
 
-## 6-Step Workflow
+### Full Automation Mode (Default)
+1. **TEE Type Selection** - Choose between Intel SGX or AWS Nitro Enclaves
+2. **SGX Processing Method** - Choose between GitHub workflow or legacy report.txt
+3. **Image Generation** - Generate SGX images or extract from existing Docker images
+4. **Hash Extraction** - Extract MRENCLAVE/MRSIGNER values
+5. **Contract Update** - Update the TEE verifier contract
 
-1. **Processing Enclave Data** - Validate and decode report.txt
-2. **Preparing Contract Interaction** - Extract MRENCLAVE/MRSIGNER values
-3. **Ready for Contract Update** - Display next steps
-4. **Contract Setup & RPC Selection** - Configure network and contract
-5. **Contract Owner Lookup** - Get owner address (optional)
-6. **Execute Contract Update** - Run the update command
+### Contract-Only Mode
+- **Direct Hash Input** - Input a hash directly without image generation
+- **Register/Unregister** - Choose to register (valid=true) or unregister (valid=false)
+- **Contract Update** - Update the contract with the provided hash
+
+### SGX Docker Mode
+- **Docker Image Processing** - Extract MRENCLAVE from existing Docker images
+- **Contract Update** - Update the contract with extracted hash
 
 ## Options
 
-- **No arguments** - Full automation with 6-step workflow
+- **No arguments** - Full automation with image generation and contract update
+- **`--contract-only`** - Contract-only mode for direct hash management
+- **`--sgx-docker IMAGE`** - SGX automation using Docker image extraction
 - **`--help`** - Show help and usage information
 
 ## Generated Files
 
-When you run the automation, this file will be created:
+When you run the automation, summary files will be created in the `summaries/` folder:
 
-- `enclave_verification_summary.txt` - Complete summary for contract update
+- `sgx_YYYYMMDD_HHMMSS.txt` - SGX workflow summary with MRENCLAVE/MRSIGNER
+- `nitro_YYYYMMDD_HHMMSS.txt` - AWS Nitro workflow summary with PCR0 hash
 
 ## Network Options
 
@@ -76,10 +87,11 @@ The script supports 4 networks:
 
 The script will:
 
-- **Process enclave data** - Extract MRENCLAVE and MRSIGNER values
-- **Show contract owner** - Display the owner address from the existing contract
+- **Process enclave data** - Extract MRENCLAVE/MRSIGNER values or generate new hashes
+- **Show contract details** - Display the TEE verifier contract address and network
 - **Display complete command** - Show the exact cast command to update the contract
 - **Execute automatically** - If PRIVATE_KEY is set in .env file
+- **Support register/unregister** - Choose to register (valid=true) or unregister (valid=false) hashes
 
 ## Quick Start
 
@@ -91,8 +103,14 @@ chmod +x *.sh
 cp env.template .env
 # Edit .env with your existing contract address and optionally PRIVATE_KEY
 
-# Run full automation (6-step workflow)
-./automate_enclave_verification.sh
+# Run full automation (image generation + contract update)
+./set-enclave-hash.sh
+
+# Run contract-only mode (direct hash management)
+./set-enclave-hash.sh --contract-only
+
+# Run SGX Docker mode (extract from Docker image)
+./set-enclave-hash.sh --sgx-docker myregistry/sgx-app:v1.0
 
 # Show help
-./automate_enclave_verification.sh --help
+./set-enclave-hash.sh --help
