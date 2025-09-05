@@ -7,6 +7,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/config.sh"
 source "${SCRIPT_DIR}/summary_generator.sh"
+source "${SCRIPT_DIR}/contract_interaction.sh"
 
 declare MRENCLAVE MRSIGNER RPC_URL NETWORK
 declare NITRO_RUN_ID NITRO_ENCLAVER_NAME NITRO_KECCAK_HASH NITRO_IMAGE_NAME NITRO_NODE_IMAGE_PATH
@@ -24,7 +25,6 @@ else
     echo -e "${YELLOW}⚠️  No .env file found at: ${ENV_FILE}${NC}"
     echo -e "${YELLOW}💡 Script will prompt for required values${NC}"
 fi
-MAIN_TEE_VERIFIER_ADDRESS=${MAIN_TEE_VERIFIER_ADDRESS:-""}
 PRIVATE_KEY=${PRIVATE_KEY:-""}
 
 cleanup() {
@@ -374,180 +374,7 @@ generate_summary() {
     fi
 }
 
-get_contract_address() {
-    if [ -n "${MAIN_TEE_VERIFIER_ADDRESS}" ]; then
-        echo -e "${BLUE}📋 Main EspressoTEEVerifier address from .env: ${MAIN_TEE_VERIFIER_ADDRESS}${NC}"
-        read -p "Use this address? (y/n): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            read -p "Enter main EspressoTEEVerifier contract address: " MAIN_TEE_VERIFIER_ADDRESS
-        fi
-    else
-        echo -e "${YELLOW}⚠️  No main EspressoTEEVerifier contract address specified${NC}"
-        echo -e "${YELLOW}💡 Create a .env file from env.template and set MAIN_TEE_VERIFIER_ADDRESS${NC}"
-        read -p "Would you like to specify the main EspressoTEEVerifier contract address now? (y/n): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            read -p "Enter main EspressoTEEVerifier contract address: " MAIN_TEE_VERIFIER_ADDRESS
-        fi
-    fi
-    
-    if [ -n "${MAIN_TEE_VERIFIER_ADDRESS}" ]; then
-        echo -e "${GREEN}✅ Main EspressoTEEVerifier address: ${MAIN_TEE_VERIFIER_ADDRESS}${NC}"
-        return 0
-    else
-        echo -e "${YELLOW}💡 No contract address provided, skipping contract setup${NC}"
-        return 1
-    fi
-}
 
-get_tee_verifier_address() {
-    if [ "$TEE_TYPE" = "nitro" ]; then
-        echo -e "${BLUE}🔍 Getting AWS Nitro TEE verifier address...${NC}"
-        CONTRACT_ADDRESS=$(cast call "${MAIN_TEE_VERIFIER_ADDRESS}" "espressoNitroTEEVerifier()" --rpc-url "${RPC_URL}" 2>/dev/null | sed 's/^0x000000000000000000000000/0x/' 2>/dev/null)
-        echo -e "${GREEN}✅ Nitro TEE Verifier address: ${CONTRACT_ADDRESS}${NC}"
-    else
-        echo -e "${BLUE}🔍 Getting SGX TEE verifier address...${NC}"
-        CONTRACT_ADDRESS=$(cast call "${MAIN_TEE_VERIFIER_ADDRESS}" "espressoSGXTEEVerifier()" --rpc-url "${RPC_URL}" 2>/dev/null | sed 's/^0x000000000000000000000000/0x/' 2>/dev/null)
-        echo -e "${GREEN}✅ SGX TEE Verifier address: ${CONTRACT_ADDRESS}${NC}"
-    fi
-    
-    if [ -n "${CONTRACT_ADDRESS}" ] && [ "${CONTRACT_ADDRESS}" != "0x" ]; then
-        return 0
-    else
-        if [ "$TEE_TYPE" = "nitro" ]; then
-            echo -e "${RED}❌ Failed to get AWS Nitro TEE verifier address${NC}"
-        else
-            echo -e "${RED}❌ Failed to get SGX TEE verifier address${NC}"
-        fi
-        return 1
-    fi
-}
-
-select_network_rpc() {
-    echo ""
-    echo -e "${BLUE}🌐 Network Selection${NC}"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo -e "${GREEN}📡 MAINNETS${NC}"
-    echo -e "   ${YELLOW}1.${NC}  Ethereum Mainnet"
-    echo -e "       └─ ${ETHEREUM_MAINNET_RPC}"
-    echo -e "   ${YELLOW}2.${NC}  Arbitrum Mainnet" 
-    echo -e "       └─ ${ARBITRUM_MAINNET_RPC}"
-    echo ""
-    echo -e "${BLUE}🧪 TESTNETS${NC}"
-    echo -e "   ${YELLOW}3.${NC}  Ethereum Sepolia"
-    echo -e "       └─ ${ETHEREUM_SEPOLIA_RPC}"
-    echo -e "   ${YELLOW}4.${NC}  Arbitrum Sepolia"
-    echo -e "       └─ ${ARBITRUM_SEPOLIA_RPC}"
-    echo ""
-    echo -e "${YELLOW}⚙️  CUSTOM${NC}"
-    echo -e "   ${YELLOW}5.${NC}  🛠️  Custom RPC URL"
-    echo ""
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    read -p "Select network (1-5): " -n 1 -r
-    echo ""
-    echo
-    
-    case $REPLY in
-        1)
-            RPC_URL="${ETHEREUM_MAINNET_RPC}"
-            NETWORK="Ethereum Mainnet"
-            ;;
-        2)
-            RPC_URL="${ARBITRUM_MAINNET_RPC}"
-            NETWORK="Arbitrum Mainnet"
-            ;;
-        3)
-            RPC_URL="${ETHEREUM_SEPOLIA_RPC}"
-            NETWORK="Ethereum Sepolia"
-            ;;
-        4)
-            RPC_URL="${ARBITRUM_SEPOLIA_RPC}"
-            NETWORK="Arbitrum Sepolia"
-            ;;
-        5)
-            read -p "Enter custom RPC URL: " RPC_URL
-            NETWORK="Custom"
-            ;;
-        *)
-            echo -e "${YELLOW}⚠️  Invalid selection, skipping contract setup${NC}"
-            return 1
-            ;;
-    esac
-    
-    echo -e "${GREEN}✅ Selected: ${NETWORK} - ${RPC_URL}${NC}"
-    return 0
-}
-
-prompt_contract_update() {
-    local workflow_mode="${1:-image_generation}"
-    
-    echo ""
-    echo -e "${YELLOW}🔗 Contract Update Setup${NC}"
-    echo "==============================="
-    
-    if ! get_contract_address; then
-        return
-    fi
-    
-    if ! select_network_rpc; then
-        return
-    fi
-    
-    if ! get_tee_verifier_address; then
-        return
-    fi
-    
-    run_contract_update_workflow "$workflow_mode"
-}
-
-get_contract_owner() {
-    if [ "$TEE_TYPE" = "nitro" ]; then
-        echo -e "${YELLOW}🔄 Getting AWS Nitro TEE verifier contract owner...${NC}"
-    else
-        echo -e "${YELLOW}🔄 Getting SGX TEE verifier contract owner...${NC}"
-    fi
-    echo -e "${BLUE}📋 Checking owner of: ${CONTRACT_ADDRESS}${NC}"
-    echo ""
-    
-    if cast call "${CONTRACT_ADDRESS}" "owner()" --rpc-url "${RPC_URL}" 2>/dev/null; then
-        OWNER_ADDRESS=$(cast call "${CONTRACT_ADDRESS}" "owner()" --rpc-url "${RPC_URL}" 2>/dev/null | sed 's/^0x000000000000000000000000/0x/' 2>/dev/null)
-        if [ "$TEE_TYPE" = "nitro" ]; then
-            echo -e "${GREEN}✅ AWS Nitro TEE verifier contract owner: ${OWNER_ADDRESS}${NC}"
-        else
-            echo -e "${GREEN}✅ SGX TEE verifier contract owner: ${OWNER_ADDRESS}${NC}"
-        fi
-        echo -e "${YELLOW}💡 Find associated private key${NC}"
-        return 0
-    else
-        if [ "$TEE_TYPE" = "nitro" ]; then
-            echo -e "${RED}❌ Failed to get AWS Nitro TEE verifier contract owner. Check contract address and RPC.${NC}"
-        else
-            echo -e "${RED}❌ Failed to get SGX TEE verifier contract owner. Check contract address and RPC.${NC}"
-        fi
-        echo -e "${YELLOW}💡 Common issues:${NC}"
-        echo "   - Contract address is incorrect"
-        echo "   - RPC endpoint is invalid or not responding"
-        echo ""
-        echo -e "${YELLOW}💡 Would you like to install 'cast' (Foundry's command-line tool)?${NC}"
-        echo "This is required for contract interaction."
-        read -p "Install cast now? (y/n): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            echo -e "${BLUE}📋 Downloading Foundry...${NC}"
-            curl -L https://foundry.paradigm.xyz | bash
-            echo -e "${GREEN}✅ Foundry downloaded.${NC}"
-            echo -e "${BLUE}📋 Installing Foundry...${NC}"
-            foundryup
-            echo -e "${GREEN}✅ Foundry installed.${NC}"
-            echo -e "${YELLOW}💡 You can now run the script again to get the contract owner.${NC}"
-        else
-            echo -e "${YELLOW}💡 You can manually install 'cast' later by following the instructions on Foundry's website.${NC}"
-        fi
-        return 1
-    fi
-}
 
 get_private_key() {
     if [ -n "${PRIVATE_KEY}" ]; then
@@ -587,155 +414,6 @@ get_private_key() {
     echo -e "${GREEN}✅ Private key set${NC}"
 }
 
-display_update_command() {
-    local workflow_mode="${1:-image_generation}"
-    
-    echo -e "${BLUE}📋 Complete command to update the contract:${NC}"
-    # Regenerating an image from the same tag won't result in the same enclave hash in AWS Nitro
-    # This will prevent the user from unregistering a hash that has not been registered in the contract
-    if [ "$workflow_mode" = "contract_only" ] || [ "$TEE_TYPE" = "sgx" ]; then
-        echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} [true|false] --rpc-url ${RPC_URL} --private-key YOUR_PRIVATE_KEY"
-        echo ""
-        echo -e "${YELLOW}💡 [true|false] will be set based on your choice in the next step${NC}"
-    else
-        echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key YOUR_PRIVATE_KEY"
-    fi
-    echo ""
-    echo -e "${YELLOW}⚠️  WARNING: Never share your private key and be careful with --private-key flag${NC}"
-    echo -e "${YELLOW}💡 Replace YOUR_PRIVATE_KEY with the actual private key${NC}"
-}
-
-send_contract_transaction() {
-    local operation="${1:-register}"
-    local valid_param="true"
-    local operation_text="register"
-    
-    if [ "$operation" = "unregister" ]; then
-        valid_param="false"
-        operation_text="unregister"
-    fi
-    
-    echo ""
-    echo -e "${YELLOW}🔑 Setting up private key for contract execution...${NC}"
-    
-    if ! get_private_key; then
-        echo ""
-        return 1
-    fi
-    
-    echo ""
-    echo -e "${BLUE}📋 Ready to execute contract update:${NC}"
-    echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} ${valid_param} --rpc-url ${RPC_URL} --private-key ${PRIVATE_KEY:0:8}..."
-    echo ""
-    echo -e "${YELLOW}⚠️  This will ${operation_text} the enclave hash on ${NETWORK}${NC}"
-    read -p "Are you ready to execute this command? (y/n): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo -e "${YELLOW}🚀 Executing contract update...${NC}"
-        echo ""
-        if cast send "${CONTRACT_ADDRESS}" "setEnclaveHash(bytes32,bool)" "0x${MRENCLAVE}" "${valid_param}" --rpc-url "${RPC_URL}" --private-key "${PRIVATE_KEY}"; then
-            echo -e "${GREEN}✅ Contract update successful!${NC}"
-            if [ "$operation" = "register" ]; then
-                echo -e "${GREEN}🎉 The enclave hash has been registered on ${NETWORK}${NC}"
-            else
-                echo -e "${GREEN}🎉 The enclave hash has been unregistered on ${NETWORK}${NC}"
-            fi
-        else
-            echo -e "${RED}❌ Contract update failed${NC}"
-            echo -e "${YELLOW}💡 Check the error message above for details${NC}"
-        fi
-    else
-        echo ""
-        echo -e "${YELLOW}💡 Command execution cancelled${NC}"
-        echo ""
-    fi
-}
-
-run_contract_update_workflow() {
-    local workflow_mode="${1:-image_generation}"
-    
-    echo -e "${YELLOW}🚀 Contract Update Command${NC}"
-    echo "==============================="
-    echo ""
-    
-    if [ -z "${MRENCLAVE}" ]; then
-        if [ "$TEE_TYPE" = "sgx" ]; then
-            MRENCLAVE=$(./decode_report_data.sh | grep "MRENCLAVE:" | cut -d' ' -f2)
-        else
-            echo -e "${RED}❌ MRENCLAVE not available for AWS Nitro workflow${NC}"
-            echo -e "${YELLOW}💡 This should have been set during PCR0 generation${NC}"
-            return 1
-        fi
-    fi
-    
-    echo -e "${BLUE}📋 Contract Call Details:${NC}"
-    echo "Network: ${NETWORK}"
-    echo "Contract: ${CONTRACT_ADDRESS}"
-    echo "Function: setEnclaveHash (0x93b5552e)"
-    echo "Parameters:"
-    echo "  - enclaveHash: 0x${MRENCLAVE}"
-    # Regenerating an image from the same tag won't result in the same enclave hash in AWS Nitro
-    # This will prevent the user from unregistering a hash that has not been registered in the contract
-    if [ "$workflow_mode" = "contract_only" ] || [ "$TEE_TYPE" = "sgx" ]; then
-        echo "  - valid: (will be set based on your choice)"
-    else
-        echo "  - valid: true (registering new hash)"
-    fi
-    echo ""
-    
-    # Optional
-    echo -e "${BLUE}📋 Step 5/7: Contract Owner Lookup${NC}"
-    echo "----------------------------------------"
-    read -p "Would you like to get the TEE contract owner address? (y/n): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        get_contract_owner
-        echo ""
-    else
-        echo -e "${YELLOW}⏭️  Skipping contract owner lookup${NC}"
-        echo ""
-    fi
-    
-    echo -e "${BLUE}📋 Step 6/7: Display Update Command${NC}"
-    echo "----------------------------------------"
-    display_update_command "$workflow_mode"
-    echo ""
-    
-    echo -e "${BLUE}📋 Step 7/7: Execute Contract Update${NC}"
-    echo "----------------------------------------"
-    
-    if [ "$workflow_mode" = "contract_only" ] || [ "$TEE_TYPE" = "sgx" ]; then
-        echo -e "${YELLOW}🔧 Operation Type:${NC}"
-        echo -e "   ${YELLOW}1.${NC}  ✅ Register enclave hash (set valid=true)"
-        echo -e "   ${YELLOW}2.${NC}  ❌ Unregister enclave hash (set valid=false)"
-        echo ""
-        read -p "Select operation (1-2): " -n 1 -r
-        echo
-        echo ""
-        
-        case "$REPLY" in
-            2)
-                echo -e "${RED}⚠️  You selected to UNREGISTER the enclave hash${NC}"
-                echo -e "${RED}⚠️  This will mark the hash as invalid in the contract${NC}"
-                echo ""
-                send_contract_transaction "unregister"
-                ;;
-            1|*)
-                echo -e "${GREEN}✅ You selected to REGISTER the enclave hash${NC}"
-                echo ""
-                send_contract_transaction "register"
-                ;;
-        esac
-    else
-        # Regenerating an image from the same tag won't result in the same enclave hash in AWS Nitro
-        # This will prevent the user from unregistering a hash that has not been registered in the contract
-        echo -e "${BLUE}ℹ️  AWS Nitro generates unique hashes per build${NC}"
-        echo -e "${BLUE}ℹ️  Proceeding with REGISTER operation${NC}"
-        echo ""
-        send_contract_transaction "register"
-    fi
-}
-
 # =============================================================================
 # OUTPUTS
 # =============================================================================
@@ -753,12 +431,14 @@ show_usage() {
     echo "  --help              - Show this help"
     echo ""
     echo "Environment Variables:"
-    echo "  MAIN_TEE_VERIFIER_ADDRESS - Main EspressoTEEVerifier contract address (.env file)"
     echo "  PRIVATE_KEY          - Private key for contract owner (optional, will prompt for confirmation/input)"
     echo "  ETHEREUM_MAINNET_RPC - Ethereum mainnet RPC URL"
     echo "  ARBITRUM_MAINNET_RPC - Arbitrum mainnet RPC URL"
     echo "  ETHEREUM_SEPOLIA_RPC - Ethereum Sepolia RPC URL"
     echo "  ARBITRUM_SEPOLIA_RPC - Arbitrum Sepolia RPC URL"
+    echo ""
+    echo "Note: The script automatically fetches TEE verifier contract addresses from sequencer inbox contracts."
+    echo "No need to manually specify contract addresses - just provide RPC URLs for the target networks."
     echo ""
     echo "Examples:"
     echo "  $0                                        # Full automation with contract update (report.txt)"
@@ -766,7 +446,7 @@ show_usage() {
     echo "  $0 --contract-only                       # Register/unregister hash directly"
     echo "  $0 --help                                # Show help"
     echo ""
-    echo "  # With .env file containing MAIN_TEE_VERIFIER_ADDRESS"
+    echo "  # With .env file containing RPC URLs"
     echo "  cp env.template .env  # Copy template and edit"
     echo "  $0                    # Run automation"
     echo ""
