@@ -29,7 +29,7 @@ select_target_chain() {
     echo -e "   ${YELLOW}6.${NC}  Appchain Mainnet"
     echo -e "   ${YELLOW}7.${NC}  Molten Mainnet\n"
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    read -p "Select target chain (1-7): " -n 1 -r \n
+    read -p "Select target chain (1-7): " -n 1 -r
     echo
     
     case $REPLY in
@@ -291,7 +291,7 @@ run_contract_update_workflow() {
     echo ""
     
     # Optional
-    echo -e "${BLUE}📋 Step 4/6: Contract Owner Lookup${NC}"
+    echo -e "${BLUE}📋 Step 5/7: Contract Owner Lookup${NC}"
     echo "----------------------------------------"
     read -p "Would you like to get the TEE contract owner address? (y/n): " -n 1 -r
     echo
@@ -303,12 +303,12 @@ run_contract_update_workflow() {
         echo ""
     fi
     
-    echo -e "${BLUE}📋 Step 5/6: Display Update Command${NC}"
+    echo -e "${BLUE}📋 Step 6/7: Display Update Command${NC}"
     echo "----------------------------------------"
     display_update_command
     echo ""
     
-    echo -e "${BLUE}📋 Step 6/6: Execute Contract Update${NC}"
+    echo -e "${BLUE}📋 Step 7/7: Execute Contract Update${NC}"
     echo "----------------------------------------"
     send_contract_transaction
 }

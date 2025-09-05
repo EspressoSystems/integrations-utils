@@ -6,6 +6,10 @@
 
 SUMMARY_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+create_summaries_dir() {
+    mkdir -p "${SUMMARY_SCRIPT_DIR}/summaries"
+}
+
 get_summary_timestamp() {
     date +"%Y%m%d_%H%M%S"
 }
@@ -59,8 +63,9 @@ generate_sgx_summary() {
     local mrenclave="$1"
     local mrsigner="$2"
     local report_file="$3"
+    local base_image="$4"
+    local gsc_image="$5"
     
-    create_summaries_dir
     local summary_timestamp=$(get_summary_timestamp)
     local sgx_summary="${SUMMARY_SCRIPT_DIR}/summaries/sgx_${summary_timestamp}.txt"
     
@@ -71,12 +76,23 @@ Intel SGX TEE Summary
 Generated: $(date)
 TEE Type: Intel SGX
 
-Raw Enclave Hash:
-$(cat ${report_file})
-
+$(if [ -n "${base_image}" ] && [ -n "${gsc_image}" ]; then
+echo "GSC Workflow Process:"
+echo "- Nitro Image: ${base_image}"
+echo "- GSC Image: ${gsc_image}"
+echo "- Method: GitHub Actions workflow (EspressoSystems/gsc)"
+echo ""
+elif [ -n "${report_file}" ] && [ -f "${report_file}" ]; then
+echo "Legacy Method (report.txt):"
+cat "${report_file}"
+echo ""
+else
+echo "Method: Unknown/Direct extraction"
+echo ""
+fi)
 Processed Data:
 - MRENCLAVE: ${mrenclave}
-- MRSIGNER: ${mrsigner}
+$(if [ -n "${mrsigner}" ]; then echo "- MRSIGNER: ${mrsigner}"; else echo "- MRSIGNER: (not available from GSC method)"; fi)
 
 Contract Update Parameters:
 - Contract Function: setEnclaveHash (0x93b5552e)
