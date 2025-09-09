@@ -9,6 +9,24 @@ This tool integrates with the following GitHub repositories for automated image 
 - **[EspressoSystems/gsc](https://github.com/EspressoSystems/gsc)** - Gramine Shielded Containers for Intel SGX image generation
 - **[EspressoSystems/aws-nitro](https://github.com/EspressoSystems/aws-nitro)** - AWS Nitro Enclaves image generation
 
+## Special Branches
+
+### 4-CPU AWS Nitro Images (`4-cpu` branch)
+
+For building AWS Nitro Enclaves images optimized for 4 CPU cores:
+
+```bash
+# Checkout to the 4-cpu branch
+git checkout 4-cpu
+
+# Run the automation - this will trigger the aws-nitro workflow with 4cpu configuration
+./set-enclave-hash.sh
+```
+
+**Key differences in the 4-cpu branch:**
+- Uses the `4cpu` ref when triggering the aws-nitro workflow
+- Generated images include `-4cpu` suffix for easy identification
+
 ## What This Does
 
 - **Processes enclave data** from report.txt files or Docker images
@@ -45,6 +63,7 @@ This tool integrates with the following GitHub repositories for automated image 
 The main script supports multiple workflow modes:
 
 ### Full Automation Mode (Default)
+
 1. **TEE Type Selection** - Choose between Intel SGX or AWS Nitro Enclaves
 2. **SGX Processing Method** - Choose between GitHub workflow or legacy report.txt
 3. **Image Generation** - Generate SGX images or extract from existing Docker images
@@ -52,11 +71,13 @@ The main script supports multiple workflow modes:
 5. **Contract Update** - Update the TEE verifier contract
 
 ### Contract-Only Mode
+
 - **Direct Hash Input** - Input a hash directly without image generation
 - **Register/Unregister** - Choose to register (valid=true) or unregister (valid=false)
 - **Contract Update** - Update the contract with the provided hash
 
 ### SGX Docker Mode
+
 - **Docker Image Processing** - Extract MRENCLAVE from existing Docker images
 - **Contract Update** - Update the contract with extracted hash
 
