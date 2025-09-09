@@ -57,30 +57,36 @@ select_target_chain() {
             NETWORK="Ethereum Sepolia (Appchain Testnet)"
             ;;
         4)
+            CHAIN_NAME="T3RN Testnet"
+            SEQUENCER_INBOX_ADDRESS="${T3RN_TESTNET_SEQUENCER_INBOX_ADDRESS}"
+            RPC_URL="${ARBITRUM_SEPOLIA_RPC}"  # T3RN testnet settles on Arbitrum Sepolia
+            NETWORK="Arbitrum Sepolia (T3RN Testnet)"
+            ;;
+        5)
             CHAIN_NAME="Rari Mainnet"
             SEQUENCER_INBOX_ADDRESS="${RARI_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ARBITRUM_MAINNET_RPC}"  # Rari mainnet settles on Arbitrum One
             NETWORK="Arbitrum One (Rari Mainnet)"
             ;;
-        5)
+        6)
             CHAIN_NAME="LogX Mainnet"
             SEQUENCER_INBOX_ADDRESS="${LOGX_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ETHEREUM_MAINNET_RPC}"  # LogX mainnet settles on Ethereum Mainnet
             NETWORK="Ethereum Mainnet (LogX Mainnet)"
             ;;
-        6)
+        7)
             CHAIN_NAME="Appchain Mainnet"
             SEQUENCER_INBOX_ADDRESS="${APPCHAIN_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ETHEREUM_MAINNET_RPC}"  # Appchain mainnet settles on Ethereum Mainnet
             NETWORK="Ethereum Mainnet (Appchain Mainnet)"
             ;;
-        7)
+        8)
             CHAIN_NAME="Molten Mainnet"
             SEQUENCER_INBOX_ADDRESS="${MOLTEN_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ARBITRUM_MAINNET_RPC}"  # Molten mainnet settles on Arbitrum One
             NETWORK="Arbitrum One (Molten Mainnet)"
             ;;
-        8)
+        9)
             CHAIN_NAME="Custom Network"
             CUSTOM_SETUP=true
             echo -e "${PURPLE}🔧 Custom Network - Select RPC${NC}"
@@ -92,9 +98,9 @@ select_target_chain() {
             echo -e "   ${YELLOW}2.${NC}  Ethereum Mainnet    (${ETHEREUM_MAINNET_RPC:-Not configured})"
             echo -e "   ${YELLOW}3.${NC}  Arbitrum Sepolia    (${ARBITRUM_SEPOLIA_RPC:-Not configured})"
             echo -e "   ${YELLOW}4.${NC}  Arbitrum Mainnet    (${ARBITRUM_MAINNET_RPC:-Not configured})"
-            echo -e "   ${YELLOW}12.${NC} Custom RPC URL\n"
+            echo -e "   ${YELLOW}5.${NC} Custom RPC URL\n"
             echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-            echo -n "Select network (1-12): "
+            echo -n "Select network (1-5): "
             read RPC_CHOICE
             echo
 
