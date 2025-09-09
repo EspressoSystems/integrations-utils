@@ -16,6 +16,9 @@ fi
 # =============================================================================
 
 select_target_chain() {
+    # Reset custom setup flag
+    CUSTOM_SETUP=false
+
     echo ""
     echo -e "${BLUE}🌐 Chain Selection${NC}"
     echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -28,8 +31,10 @@ select_target_chain() {
     echo -e "   ${YELLOW}5.${NC}  LogX Mainnet"
     echo -e "   ${YELLOW}6.${NC}  Appchain Mainnet"
     echo -e "   ${YELLOW}7.${NC}  Molten Mainnet\n"
+    echo -e "${PURPLE}🔧 CUSTOM${NC}"
+    echo -e "   ${YELLOW}8.${NC}  Custom (Manual EspressoTEEVerifier)\n"
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    read -p "Select target chain (1-7): " -n 1 -r
+    read -p "Select target chain (1-8): " -n 1 -r
     echo
     
     case $REPLY in
@@ -75,6 +80,77 @@ select_target_chain() {
             RPC_URL="${ARBITRUM_MAINNET_RPC}"  # Molten mainnet settles on Arbitrum One
             NETWORK="Arbitrum One (Molten Mainnet)"
             ;;
+        8)
+            CHAIN_NAME="Custom Network"
+            CUSTOM_SETUP=true
+            echo -e "${PURPLE}🔧 Custom Network - Select RPC${NC}"
+            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+            # Show available RPC options
+            echo -e "${BLUE}🌐 Select Network RPC:${NC}"
+            echo -e "   ${YELLOW}1.${NC}  Ethereum Sepolia     (${ETHEREUM_SEPOLIA_RPC:-Not configured})"
+            echo -e "   ${YELLOW}2.${NC}  Ethereum Mainnet    (${ETHEREUM_MAINNET_RPC:-Not configured})"
+            echo -e "   ${YELLOW}3.${NC}  Arbitrum Sepolia    (${ARBITRUM_SEPOLIA_RPC:-Not configured})"
+            echo -e "   ${YELLOW}4.${NC}  Arbitrum Mainnet    (${ARBITRUM_MAINNET_RPC:-Not configured})"
+            echo -e "   ${YELLOW}12.${NC} Custom RPC URL\n"
+            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -n "Select network (1-12): "
+            read RPC_CHOICE
+            echo
+
+            case $RPC_CHOICE in
+                1)
+                    NETWORK="Ethereum Sepolia (Custom)"
+                    RPC_URL="${ETHEREUM_SEPOLIA_RPC}"
+                    ;;
+                2)
+                    NETWORK="Ethereum Mainnet (Custom)"
+                    RPC_URL="${ETHEREUM_MAINNET_RPC}"
+                    ;;
+                3)
+                    NETWORK="Arbitrum Sepolia (Custom)"
+                    RPC_URL="${ARBITRUM_SEPOLIA_RPC}"
+                    ;;
+                4)
+                    NETWORK="Arbitrum Mainnet (Custom)"
+                    RPC_URL="${ARBITRUM_MAINNET_RPC}"
+                    ;;
+                5)
+                    echo -e "${YELLOW}💡 Enter custom RPC URL:${NC}"
+                    echo -n "RPC URL: "
+                    read CUSTOM_RPC_URL
+                    echo
+                    if [ -z "$CUSTOM_RPC_URL" ]; then
+                        echo -e "${RED}❌ RPC URL cannot be empty${NC}"
+                        return 1
+                    fi
+                    NETWORK="Custom Network"
+                    RPC_URL="$CUSTOM_RPC_URL"
+                    ;;
+                *)
+                    echo -e "${RED}❌ Invalid network selection${NC}"
+                    return 1
+                    ;;
+            esac
+
+            if [ -z "$RPC_URL" ]; then
+                echo -e "${RED}❌ Selected RPC is not configured. Please check your .env file or choose option 5.${NC}"
+                return 1
+            fi
+
+            # Prompt for EspressoTEEVerifier address
+            echo -e "${YELLOW}💡 Enter the EspressoTEEVerifier contract address:${NC}"
+            echo -n "Address (0x...): "
+            read MAIN_TEE_VERIFIER_ADDRESS
+            echo
+
+            # Validate address format
+            if [[ ! "$MAIN_TEE_VERIFIER_ADDRESS" =~ ^0x[0-9a-fA-F]{40}$ ]]; then
+                echo -e "${RED}❌ Invalid address format. Should be 40 hex characters${NC}"
+                return 1
+            fi
+
+            ;;
         *)
             echo -e "${YELLOW}⚠️  Invalid selection${NC}"
             return 1
@@ -82,7 +158,13 @@ select_target_chain() {
     esac
     
     echo -e "${GREEN}✅ Selected: ${CHAIN_NAME}${NC}"
-    echo -e "${BLUE}📋 Sequencer Inbox: ${SEQUENCER_INBOX_ADDRESS}${NC}"
+
+    if [ "$CUSTOM_SETUP" = true ]; then
+        echo -e "${PURPLE}📋 EspressoTEEVerifier: ${MAIN_TEE_VERIFIER_ADDRESS}${NC}"
+    else
+        echo -e "${BLUE}📋 Sequencer Inbox: ${SEQUENCER_INBOX_ADDRESS}${NC}"
+    fi
+
     echo -e "${BLUE}📋 Network: ${NETWORK}${NC}"
     echo -e "${BLUE}📋 RPC: ${RPC_URL}${NC}"
     return 0
@@ -317,19 +399,22 @@ prompt_contract_update() {
     echo ""
     echo -e "${YELLOW}🔗 Contract Update Setup${NC}"
     echo "==============================="
-    
+
     if ! select_target_chain; then
         return
     fi
-    
-    if ! get_main_tee_verifier_from_inbox; then
-        return
+
+    # Skip getting main TEE verifier from inbox if it's a custom setup
+    if [ "$CUSTOM_SETUP" != true ]; then
+        if ! get_main_tee_verifier_from_inbox; then
+            return
+        fi
     fi
-    
+
     if ! get_tee_verifier_address; then
         return
     fi
-    
+
     run_contract_update_workflow
 }
 
