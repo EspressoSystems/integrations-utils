@@ -26,16 +26,21 @@ select_target_chain() {
     echo -e "   ${YELLOW}1.${NC}  Rari Testnet"
     echo -e "   ${YELLOW}2.${NC}  LogX Testnet"
     echo -e "   ${YELLOW}3.${NC}  Appchain Testnet"
-    echo -e "   ${YELLOW}4.${NC}  T3RN Testnet\n"   
+    echo -e "   ${YELLOW}4.${NC}  T3RN Testnet"
+    echo -e "   ${YELLOW}5.${NC}  Apechain Testnet\n"
+    echo -e "   ${YELLOW}6.${NC}  NodeOps Testnet"
     echo -e "${GREEN}📡 MAINNETS${NC}"
-    echo -e "   ${YELLOW}5.${NC}  Rari Mainnet"
-    echo -e "   ${YELLOW}6.${NC}  LogX Mainnet"
-    echo -e "   ${YELLOW}7.${NC}  Appchain Mainnet"
-    echo -e "   ${YELLOW}8.${NC}  Molten Mainnet\n"
+    echo -e "   ${YELLOW}7.${NC}  Rari Mainnet"
+    echo -e "   ${YELLOW}8.${NC}  LogX Mainnet"
+    echo -e "   ${YELLOW}9.${NC}  Appchain Mainnet"
+    echo -e "   ${YELLOW}10.${NC} T3RN Mainnet"
+    echo -e "   ${YELLOW}11.${NC} Apechain Mainnet"
+    echo -e "   ${YELLOW}12.${NC} NodeOps Mainnet"
+    echo -e "   ${YELLOW}13.${NC} Molten Mainnet\n"
     echo -e "${PURPLE}🔧 CUSTOM${NC}"
-    echo -e "   ${YELLOW}9.${NC}  Custom (Manual EspressoTEEVerifier)\n"
+    echo -e "   ${YELLOW}14.${NC}  Custom (Manual EspressoTEEVerifier)\n"
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    read -p "Select target chain (1-8): " -n 1 -r
+    read -p "Select target chain (1-10): " -n 1 -r
     echo
     
     case $REPLY in
@@ -64,30 +69,60 @@ select_target_chain() {
             NETWORK="Arbitrum Sepolia (T3RN Testnet)"
             ;;
         5)
+            CHAIN_NAME="Apechain Testnet"
+            SEQUENCER_INBOX_ADDRESS="${APECHAIN_TESTNET_SEQUENCER_INBOX_ADDRESS}"
+            RPC_URL="${ARBITRUM_SEPOLIA_RPC}"  # Apechain testnet settles on Arbitrum Sepolia
+            NETWORK="Arbitrum Sepolia (Apechain Testnet)"
+            ;;
+        6)
+            CHAIN_NAME="NodeOps Testnet"
+            SEQUENCER_INBOX_ADDRESS="${NODEOPS_TESTNET_SEQUENCER_INBOX_ADDRESS}"
+            RPC_URL="${ARBITRUM_SEPOLIA_RPC}"  # NodeOps testnet settles on Arbitrum Sepolia
+            NETWORK="Arbitrum Sepolia (NodeOps Testnet)"
+            ;;
+        7)
             CHAIN_NAME="Rari Mainnet"
             SEQUENCER_INBOX_ADDRESS="${RARI_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ARBITRUM_MAINNET_RPC}"  # Rari mainnet settles on Arbitrum One
             NETWORK="Arbitrum One (Rari Mainnet)"
             ;;
-        6)
+        8)
             CHAIN_NAME="LogX Mainnet"
             SEQUENCER_INBOX_ADDRESS="${LOGX_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ETHEREUM_MAINNET_RPC}"  # LogX mainnet settles on Ethereum Mainnet
             NETWORK="Ethereum Mainnet (LogX Mainnet)"
             ;;
-        7)
+        9)
             CHAIN_NAME="Appchain Mainnet"
             SEQUENCER_INBOX_ADDRESS="${APPCHAIN_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ETHEREUM_MAINNET_RPC}"  # Appchain mainnet settles on Ethereum Mainnet
             NETWORK="Ethereum Mainnet (Appchain Mainnet)"
             ;;
-        8)
+        10)
+            CHAIN_NAME="T3RN Mainnet"
+            SEQUENCER_INBOX_ADDRESS="${T3RN_MAINNET_SEQUENCER_INBOX_ADDRESS}"
+            RPC_URL="${ARBITRUM_MAINNET_RPC}"  # T3RN mainnet settles on Arbitrum One
+            NETWORK="Arbitrum One (T3RN Mainnet)"
+            ;;
+        11)
+            CHAIN_NAME="Apechain Mainnet"
+            SEQUENCER_INBOX_ADDRESS="${APECHAIN_MAINNET_SEQUENCER_INBOX_ADDRESS}"
+            RPC_URL="${ARBITRUM_MAINNET_RPC}"  # Apechain mainnet settles on Arbitrum One
+            NETWORK="Arbitrum One (Apechain Mainnet)"
+            ;;
+        12)
+            CHAIN_NAME="NodeOps Mainnet"
+            SEQUENCER_INBOX_ADDRESS="${NODEOPS_MAINNET_SEQUENCER_INBOX_ADDRESS}"
+            RPC_URL="${ARBITRUM_MAINNET_RPC}"  # NodeOps mainnet settles on Arbitrum One
+            NETWORK="Arbitrum One (NodeOps Mainnet)"
+            ;;
+        13)
             CHAIN_NAME="Molten Mainnet"
             SEQUENCER_INBOX_ADDRESS="${MOLTEN_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ARBITRUM_MAINNET_RPC}"  # Molten mainnet settles on Arbitrum One
             NETWORK="Arbitrum One (Molten Mainnet)"
             ;;
-        9)
+        14)
             CHAIN_NAME="Custom Network"
             CUSTOM_SETUP=true
             echo -e "${PURPLE}🔧 Custom Network - Select RPC${NC}"
