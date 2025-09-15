@@ -40,7 +40,7 @@ select_target_chain() {
     echo -e "${PURPLE}🔧 CUSTOM${NC}"
     echo -e "   ${YELLOW}14.${NC}  Custom (Manual EspressoTEEVerifier)\n"
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    read -p "Select target chain (1-10): " -n 1 -r
+    read -p "Select target chain (1-14): " -r
     echo
     
     case $REPLY in
