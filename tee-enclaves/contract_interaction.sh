@@ -27,7 +27,7 @@ select_target_chain() {
     echo -e "   ${YELLOW}2.${NC}  LogX Testnet"
     echo -e "   ${YELLOW}3.${NC}  Appchain Testnet"
     echo -e "   ${YELLOW}4.${NC}  T3RN Testnet"
-    echo -e "   ${YELLOW}5.${NC}  Apechain Testnet\n"
+    echo -e "   ${YELLOW}5.${NC}  Apechain Testnet"
     echo -e "   ${YELLOW}6.${NC}  NodeOps Testnet"
     echo -e "${GREEN}📡 MAINNETS${NC}"
     echo -e "   ${YELLOW}7.${NC}  Rari Mainnet"
@@ -352,7 +352,7 @@ get_private_key() {
 
 display_update_command() {
     echo -e "${BLUE}📋 Complete command to update the contract:${NC}"
-    echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key YOUR_PRIVATE_KEY \n" 
+    echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key YOUR_PRIVATE_KEY" 
     echo -e "${YELLOW}⚠️  WARNING: Never share your private key and be careful with --private-key flag${NC}"
     echo -e "${YELLOW}💡 Replace YOUR_PRIVATE_KEY with the actual private key${NC}"
 }
