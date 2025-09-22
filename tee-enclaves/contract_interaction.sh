@@ -438,9 +438,6 @@ run_contract_update_workflow() {
 }
 
 prompt_contract_update() {
-    echo ""
-    echo -e "${YELLOW}🔗 Contract Update Setup${NC}"
-    echo "==============================="
 
     if ! select_target_chain; then
         return
