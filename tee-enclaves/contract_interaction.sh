@@ -40,10 +40,10 @@ select_target_chain() {
     echo -e "${PURPLE}🔧 CUSTOM${NC}"
     echo -e "   ${YELLOW}14.${NC}  Custom (Manual EspressoTEEVerifier)\n"
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    read -p "Select target chain (1-14): " -r
+    read -p "Select target chain (1-14): " -r CHAIN_SELECTION
     echo
-    
-    case $REPLY in
+
+    case $CHAIN_SELECTION in
         1)
             CHAIN_NAME="Rari Testnet"
             SEQUENCER_INBOX_ADDRESS="${RARI_TESTNET_SEQUENCER_INBOX_ADDRESS}"
