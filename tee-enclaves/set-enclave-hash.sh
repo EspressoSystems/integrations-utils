@@ -284,7 +284,7 @@ generate_nitro_pcr0_remote() {
     
     NITRO_RUN_ID="$run_id"
 
-    gh repo set-default https://github.com/EspressoSystems/EspressoSystems/aws-nitro || {
+    gh repo set-default https://github.com/EspressoSystems/aws-nitro || {
         echo -e "${RED}❌ Failed to set default repository for gh CLI${NC}"
         return 1
     }
