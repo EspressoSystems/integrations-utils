@@ -1,21 +1,20 @@
 # Transaction Load Generator (tx-load-gen)
 
-A TypeScript-based tool that continuously sends transactions to EVM-compatible blockchains. Perfect for load testing, stress testing, and generating consistent transaction volume on various networks.
+A TypeScript-based tool that continuously sends transactions to EVM-compatible blockchains. Perfect for load testing, stress testing, and generating consistent transaction volume on various testnet networks.
 
 ## Supported Networks
 
 ### Testnets
 
-- Rari Testnet
-- LogX Testnet  
-- Appchain Testnet
-
-### Mainnets
-
-- Rari Mainnet
-- LogX Mainnet
-- Appchain Mainnet
-- Molten Mainnet
+- **Rari Testnet**
+- **LogX Testnet**
+- **Appchain Testnet**
+- **NodeOps Testnet**
+- **Apechain Testnet**
+- **Rufus Testnet**
+- **T3rn Testnet**
+- **Huddle01**
+- **Custom Network**
 
 ## Prerequisites
 
@@ -73,12 +72,27 @@ You can override default RPC URLs by setting these environment variables:
 RARI_TESTNET_RPC=https://your-custom-rpc.com
 LOGX_TESTNET_RPC=https://your-custom-rpc.com
 APPCHAIN_TESTNET_RPC=https://your-custom-rpc.com
+NODEOPS_TESTNET_RPC=https://your-custom-rpc.com
+APECHAIN_TESTNET_RPC=https://your-custom-rpc.com
+RUFUS_TESTNET_RPC=https://your-custom-rpc.com
+T3RN_TESTNET_RPC=https://your-custom-rpc.com
+HUDDLE01_RPC=https://your-custom-rpc.com
 
-# Mainnets
-RARI_MAINNET_RPC=https://your-custom-rpc.com
-LOGX_MAINNET_RPC=https://your-custom-rpc.com
-APPCHAIN_MAINNET_RPC=https://your-custom-rpc.com
-MOLTEN_MAINNET_RPC=https://your-custom-rpc.com
+# Custom Network
+CUSTOM_RPC=https://your-custom-rpc-endpoint.com
+```
+
+### Custom Network Setup
+
+To use a custom network:
+
+1. Set the `CUSTOM_RPC` environment variable to your RPC endpoint URL
+2. Select option `9` (Custom Network) when prompted
+3. Ensure your wallet has funds on the custom network
+
+Example:
+```bash
+CUSTOM_RPC=https://my-private-testnet.com/rpc
 ```
 
 ## Usage
@@ -92,7 +106,7 @@ MOLTEN_MAINNET_RPC=https://your-custom-rpc.com
    ```
 
 2. **Follow the interactive prompts:**
-   - Select your target blockchain network (1-7)
+   - Select your target blockchain network (1-9)
    - Choose transaction data size (1-64 KB)
 
 3. **Monitor the output:**
@@ -118,38 +132,39 @@ MOLTEN_MAINNET_RPC=https://your-custom-rpc.com
        └─ https://kartel-testnet.alt.technology
    3.  Appchain Testnet
        └─ https://appchaintestnet.rpc.caldera.xyz
-
-🚀 MAINNET NETWORKS
-
-   4.  Rari Mainnet
-       └─ https://rari.calderachain.xyz/http
-   5.  LogX Mainnet
-       └─ https://vzjuxmhfn70kgnlds27h.alt.technology
-   6.  Appchain Mainnet
-       └─ https://appchain.calderachain.xyz/http
-   7.  Molten Mainnet
-       └─ https://molten.calderachain.xyz/http
+   4.  NodeOps Testnet
+       └─ https://nodeops-orchestrator-network.calderachain.xyz/http
+   5.  Apechain Testnet
+       └─ https://apechain-testnet.rpc.caldera.xyz/http
+   6.  Rufus Testnet
+       └─ https://rufus-sepolia-testnet.rpc.caldera.xyz/http
+   7.  T3rn Testnet
+       └─ https://brn-testnet.rpc.caldera.xyz/http
+   8.  Huddle01
+       └─ https://huddle-testnet.rpc.caldera.xyz/http
+   9.  Custom Network
+       └─ https://your-custom-rpc-endpoint.com
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Select chain (1-7): 3
+Select chain (1-9): 6
 
-✅ Selected: Appchain Testnet
-Enter data size in KB (max 64): 23
+✅ Selected: Rufus Testnet
+Enter data size in KB (max 64): 4
 
-✅ Data size: 23KB
+✅ Data size: 4KB
 
 📊 Configuration:
-   Network:    Appchain Testnet
-   RPC:        https://appchaintestnet.rpc.caldera.xyz
+   Network:    Rufus Testnet
+   RPC:        https://rufus-sepolia-testnet.rpc.caldera.xyz/http
    Sender:     0x4df30AF0237E9a5c29D0f49a18Cb6f46692e3c71
    Delay:      10ms
    Value:      1 wei
    Gas Price:  5 gwei
-   Data Size:  ~23KB
+   Data Size:  ~4KB
    Balance:    1.493155685479993854 ETH
 
 🔍 Testing transaction estimation...
-   Est. Gas:   401080
+   Est. Gas:   82160
 
 🎯 Starting continuous transaction generation...
 Press Ctrl+C to stop
@@ -168,17 +183,25 @@ Press Ctrl+C to stop
 ### Common Issues
 
 1. **"Insufficient funds"**
-   - Check your wallet balance on the target network
-   - Ensure you have enough ETH for gas fees
+   - Check your wallet balance on the target testnet
+   - Ensure you have enough testnet ETH for gas fees
+   - For custom networks, fund your wallet appropriately
 
 2. **RPC connection errors**
-   - Verify the RPC endpoint is accessible
-   - Try using a custom RPC URL in your `.env` file
+   - Verify the RPC endpoint is accessible and responding
+   - Try using a custom RPC URL override in your `.env` file
+   - For custom networks, ensure the RPC endpoint supports standard Ethereum JSON-RPC methods
 
 3. **Transaction failures**
-   - Check network congestion
-   - Adjust gas price if needed
-   - Verify recipient address is valid
+   - Check network congestion and status
+   - Adjust gas price if needed (`GAS_PRICE` env var)
+   - Verify recipient address is valid (or use default self-address)
+   - Ensure the network supports the transaction parameters you're using
+
+4. **Custom network issues**
+   - Verify `CUSTOM_RPC` URL is correct and accessible
+   - Confirm the custom network is EVM-compatible
+   - Check that your wallet has the correct format for that network
 
 ## License
 
