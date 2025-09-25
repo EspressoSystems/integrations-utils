@@ -16,23 +16,34 @@ fi
 # =============================================================================
 
 select_target_chain() {
+    # Reset custom setup flag
+    CUSTOM_SETUP=false
+
     echo ""
     echo -e "${BLUE}🌐 Chain Selection${NC}"
     echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
     echo -e "${BLUE}🧪 TESTNETS${NC}"
     echo -e "   ${YELLOW}1.${NC}  Rari Testnet"
     echo -e "   ${YELLOW}2.${NC}  LogX Testnet"
-    echo -e "   ${YELLOW}3.${NC}  Appchain Testnet\n"
+    echo -e "   ${YELLOW}3.${NC}  Appchain Testnet"
+    echo -e "   ${YELLOW}4.${NC}  T3RN Testnet"
+    echo -e "   ${YELLOW}5.${NC}  Apechain Testnet"
+    echo -e "   ${YELLOW}6.${NC}  NodeOps Testnet"
     echo -e "${GREEN}📡 MAINNETS${NC}"
-    echo -e "   ${YELLOW}4.${NC}  Rari Mainnet"
-    echo -e "   ${YELLOW}5.${NC}  LogX Mainnet"
-    echo -e "   ${YELLOW}6.${NC}  Appchain Mainnet"
-    echo -e "   ${YELLOW}7.${NC}  Molten Mainnet\n"
+    echo -e "   ${YELLOW}7.${NC}  Rari Mainnet"
+    echo -e "   ${YELLOW}8.${NC}  LogX Mainnet"
+    echo -e "   ${YELLOW}9.${NC}  Appchain Mainnet"
+    echo -e "   ${YELLOW}10.${NC} T3RN Mainnet"
+    echo -e "   ${YELLOW}11.${NC} Apechain Mainnet"
+    echo -e "   ${YELLOW}12.${NC} NodeOps Mainnet"
+    echo -e "   ${YELLOW}13.${NC} Molten Mainnet\n"
+    echo -e "${PURPLE}🔧 CUSTOM${NC}"
+    echo -e "   ${YELLOW}14.${NC}  Custom (Manual EspressoTEEVerifier)\n"
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    read -p "Select target chain (1-7): " -n 1 -r
+    read -p "Select target chain (1-14): " -r CHAIN_SELECTION
     echo
-    
-    case $REPLY in
+
+    case $CHAIN_SELECTION in
         1)
             CHAIN_NAME="Rari Testnet"
             SEQUENCER_INBOX_ADDRESS="${RARI_TESTNET_SEQUENCER_INBOX_ADDRESS}"
@@ -52,28 +63,135 @@ select_target_chain() {
             NETWORK="Ethereum Sepolia (Appchain Testnet)"
             ;;
         4)
+            CHAIN_NAME="T3RN Testnet"
+            SEQUENCER_INBOX_ADDRESS="${T3RN_TESTNET_SEQUENCER_INBOX_ADDRESS}"
+            RPC_URL="${ARBITRUM_SEPOLIA_RPC}"  # T3RN testnet settles on Arbitrum Sepolia
+            NETWORK="Arbitrum Sepolia (T3RN Testnet)"
+            ;;
+        5)
+            CHAIN_NAME="Apechain Testnet"
+            SEQUENCER_INBOX_ADDRESS="${APECHAIN_TESTNET_SEQUENCER_INBOX_ADDRESS}"
+            RPC_URL="${ARBITRUM_SEPOLIA_RPC}"  # Apechain testnet settles on Arbitrum Sepolia
+            NETWORK="Arbitrum Sepolia (Apechain Testnet)"
+            ;;
+        6)
+            CHAIN_NAME="NodeOps Testnet"
+            SEQUENCER_INBOX_ADDRESS="${NODEOPS_TESTNET_SEQUENCER_INBOX_ADDRESS}"
+            RPC_URL="${ARBITRUM_SEPOLIA_RPC}"  # NodeOps testnet settles on Arbitrum Sepolia
+            NETWORK="Arbitrum Sepolia (NodeOps Testnet)"
+            ;;
+        7)
             CHAIN_NAME="Rari Mainnet"
             SEQUENCER_INBOX_ADDRESS="${RARI_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ARBITRUM_MAINNET_RPC}"  # Rari mainnet settles on Arbitrum One
             NETWORK="Arbitrum One (Rari Mainnet)"
             ;;
-        5)
+        8)
             CHAIN_NAME="LogX Mainnet"
             SEQUENCER_INBOX_ADDRESS="${LOGX_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ETHEREUM_MAINNET_RPC}"  # LogX mainnet settles on Ethereum Mainnet
             NETWORK="Ethereum Mainnet (LogX Mainnet)"
             ;;
-        6)
+        9)
             CHAIN_NAME="Appchain Mainnet"
             SEQUENCER_INBOX_ADDRESS="${APPCHAIN_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ETHEREUM_MAINNET_RPC}"  # Appchain mainnet settles on Ethereum Mainnet
             NETWORK="Ethereum Mainnet (Appchain Mainnet)"
             ;;
-        7)
+        10)
+            CHAIN_NAME="T3RN Mainnet"
+            SEQUENCER_INBOX_ADDRESS="${T3RN_MAINNET_SEQUENCER_INBOX_ADDRESS}"
+            RPC_URL="${ARBITRUM_MAINNET_RPC}"  # T3RN mainnet settles on Arbitrum One
+            NETWORK="Arbitrum One (T3RN Mainnet)"
+            ;;
+        11)
+            CHAIN_NAME="Apechain Mainnet"
+            SEQUENCER_INBOX_ADDRESS="${APECHAIN_MAINNET_SEQUENCER_INBOX_ADDRESS}"
+            RPC_URL="${ARBITRUM_MAINNET_RPC}"  # Apechain mainnet settles on Arbitrum One
+            NETWORK="Arbitrum One (Apechain Mainnet)"
+            ;;
+        12)
+            CHAIN_NAME="NodeOps Mainnet"
+            SEQUENCER_INBOX_ADDRESS="${NODEOPS_MAINNET_SEQUENCER_INBOX_ADDRESS}"
+            RPC_URL="${ARBITRUM_MAINNET_RPC}"  # NodeOps mainnet settles on Arbitrum One
+            NETWORK="Arbitrum One (NodeOps Mainnet)"
+            ;;
+        13)
             CHAIN_NAME="Molten Mainnet"
             SEQUENCER_INBOX_ADDRESS="${MOLTEN_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ARBITRUM_MAINNET_RPC}"  # Molten mainnet settles on Arbitrum One
             NETWORK="Arbitrum One (Molten Mainnet)"
+            ;;
+        14)
+            CHAIN_NAME="Custom Network"
+            CUSTOM_SETUP=true
+            echo -e "${PURPLE}🔧 Custom Network - Select RPC${NC}"
+            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+            # Show available RPC options
+            echo -e "${BLUE}🌐 Select Network RPC:${NC}"
+            echo -e "   ${YELLOW}1.${NC}  Ethereum Sepolia     (${ETHEREUM_SEPOLIA_RPC:-Not configured})"
+            echo -e "   ${YELLOW}2.${NC}  Ethereum Mainnet    (${ETHEREUM_MAINNET_RPC:-Not configured})"
+            echo -e "   ${YELLOW}3.${NC}  Arbitrum Sepolia    (${ARBITRUM_SEPOLIA_RPC:-Not configured})"
+            echo -e "   ${YELLOW}4.${NC}  Arbitrum Mainnet    (${ARBITRUM_MAINNET_RPC:-Not configured})"
+            echo -e "   ${YELLOW}5.${NC} Custom RPC URL\n"
+            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -n "Select network (1-5): "
+            read RPC_CHOICE
+            echo
+
+            case $RPC_CHOICE in
+                1)
+                    NETWORK="Ethereum Sepolia (Custom)"
+                    RPC_URL="${ETHEREUM_SEPOLIA_RPC}"
+                    ;;
+                2)
+                    NETWORK="Ethereum Mainnet (Custom)"
+                    RPC_URL="${ETHEREUM_MAINNET_RPC}"
+                    ;;
+                3)
+                    NETWORK="Arbitrum Sepolia (Custom)"
+                    RPC_URL="${ARBITRUM_SEPOLIA_RPC}"
+                    ;;
+                4)
+                    NETWORK="Arbitrum Mainnet (Custom)"
+                    RPC_URL="${ARBITRUM_MAINNET_RPC}"
+                    ;;
+                5)
+                    echo -e "${YELLOW}💡 Enter custom RPC URL:${NC}"
+                    echo -n "RPC URL: "
+                    read CUSTOM_RPC_URL
+                    echo
+                    if [ -z "$CUSTOM_RPC_URL" ]; then
+                        echo -e "${RED}❌ RPC URL cannot be empty${NC}"
+                        return 1
+                    fi
+                    NETWORK="Custom Network"
+                    RPC_URL="$CUSTOM_RPC_URL"
+                    ;;
+                *)
+                    echo -e "${RED}❌ Invalid network selection${NC}"
+                    return 1
+                    ;;
+            esac
+
+            if [ -z "$RPC_URL" ]; then
+                echo -e "${RED}❌ Selected RPC is not configured. Please check your .env file or choose option 5.${NC}"
+                return 1
+            fi
+
+            # Prompt for EspressoTEEVerifier address
+            echo -e "${YELLOW}💡 Enter the EspressoTEEVerifier contract address:${NC}"
+            echo -n "Address (0x...): "
+            read MAIN_TEE_VERIFIER_ADDRESS
+            echo
+
+            # Validate address format
+            if [[ ! "$MAIN_TEE_VERIFIER_ADDRESS" =~ ^0x[0-9a-fA-F]{40}$ ]]; then
+                echo -e "${RED}❌ Invalid address format. Should be 40 hex characters${NC}"
+                return 1
+            fi
+
             ;;
         *)
             echo -e "${YELLOW}⚠️  Invalid selection${NC}"
@@ -82,7 +200,13 @@ select_target_chain() {
     esac
     
     echo -e "${GREEN}✅ Selected: ${CHAIN_NAME}${NC}"
-    echo -e "${BLUE}📋 Sequencer Inbox: ${SEQUENCER_INBOX_ADDRESS}${NC}"
+
+    if [ "$CUSTOM_SETUP" = true ]; then
+        echo -e "${PURPLE}📋 EspressoTEEVerifier: ${MAIN_TEE_VERIFIER_ADDRESS}${NC}"
+    else
+        echo -e "${BLUE}📋 Sequencer Inbox: ${SEQUENCER_INBOX_ADDRESS}${NC}"
+    fi
+
     echo -e "${BLUE}📋 Network: ${NETWORK}${NC}"
     echo -e "${BLUE}📋 RPC: ${RPC_URL}${NC}"
     return 0
@@ -228,7 +352,7 @@ get_private_key() {
 
 display_update_command() {
     echo -e "${BLUE}📋 Complete command to update the contract:${NC}"
-    echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key YOUR_PRIVATE_KEY \n" 
+    echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key YOUR_PRIVATE_KEY" 
     echo -e "${YELLOW}⚠️  WARNING: Never share your private key and be careful with --private-key flag${NC}"
     echo -e "${YELLOW}💡 Replace YOUR_PRIVATE_KEY with the actual private key${NC}"
 }
@@ -314,22 +438,22 @@ run_contract_update_workflow() {
 }
 
 prompt_contract_update() {
-    echo ""
-    echo -e "${YELLOW}🔗 Contract Update Setup${NC}"
-    echo "==============================="
-    
+
     if ! select_target_chain; then
         return
     fi
-    
-    if ! get_main_tee_verifier_from_inbox; then
-        return
+
+    # Skip getting main TEE verifier from inbox if it's a custom setup
+    if [ "$CUSTOM_SETUP" != true ]; then
+        if ! get_main_tee_verifier_from_inbox; then
+            return
+        fi
     fi
-    
+
     if ! get_tee_verifier_address; then
         return
     fi
-    
+
     run_contract_update_workflow
 }
 

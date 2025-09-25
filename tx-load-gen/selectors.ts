@@ -31,13 +31,6 @@ export const selectChain = (chains: Chains): Promise<Chain> => {
             console.log(`       └─ ${chain.rpc}`);
         });
         console.log("");
-        console.log("🚀 MAINNET NETWORKS");
-        console.log("");
-        Object.entries(chains.mainnets).forEach(([key, chain]) => {
-            console.log(`   ${key}.  ${chain.name}`);
-            console.log(`       └─ ${chain.rpc}`);
-        });
-        console.log("");
         console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         
         const rl = readline.createInterface({
@@ -45,12 +38,12 @@ export const selectChain = (chains: Chains): Promise<Chain> => {
             output: process.stdout
         });
         
-        rl.question('Select chain (1-7): ', (answer: string) => {
+        rl.question('Select chain (1-9): ', (answer: string) => {
             rl.close();
-            
+
             const selection = parseInt(answer);
-            const allChains = { ...chains.testnets, ...chains.mainnets };
-            
+            const allChains = { ...chains.testnets };
+
             if (allChains[selection]) {
                 resolve(allChains[selection]);
             } else {

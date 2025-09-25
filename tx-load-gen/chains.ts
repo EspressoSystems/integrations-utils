@@ -10,30 +10,37 @@ export const CHAINS = {
             rpc: process.env.RARI_TESTNET_RPC || "https://rari-testnet.calderachain.xyz/http"
         },
         2: {
-            name: "LogX Testnet", 
+            name: "LogX Testnet",
             rpc: process.env.LOGX_TESTNET_RPC || "https://kartel-testnet.alt.technology"
         },
         3: {
             name: "Appchain Testnet",
             rpc: process.env.APPCHAIN_TESTNET_RPC || "https://appchaintestnet.rpc.caldera.xyz"
-        }
-    },
-    mainnets: {
+        },
         4: {
-            name: "Rari Mainnet",
-            rpc: process.env.RARI_MAINNET_RPC || "https://rari.calderachain.xyz/http"
+            name: "NodeOps Testnet",
+            rpc: process.env.NODEOPS_TESTNET_RPC || "https://nodeops-orchestrator-network.calderachain.xyz/http"
         },
         5: {
-            name: "LogX Mainnet",
-            rpc: process.env.LOGX_MAINNET_RPC || "https://vzjuxmhfn70kgnlds27h.alt.technology"
+            name: "Apechain Testnet",
+            rpc: process.env.APECHAIN_TESTNET_RPC || "https://apechain-testnet.rpc.caldera.xyz/http"
         },
         6: {
-            name: "Appchain Mainnet", 
-            rpc: process.env.APPCHAIN_MAINNET_RPC || "https://appchain.calderachain.xyz/http"
+            name: "Rufus Testnet",
+            rpc: process.env.RUFUS_TESTNET_RPC || "https://rufus-sepolia-testnet.rpc.caldera.xyz/http"
         },
         7: {
-            name: "Molten Mainnet",
-            rpc: process.env.MOLTEN_MAINNET_RPC || "https://molten.calderachain.xyz/http"
+            name: "T3rn Testnet",
+            rpc: process.env.T3RN_TESTNET_RPC || "https://brn-testnet.rpc.caldera.xyz/http"
+        },
+        8: {
+            name: "Huddle01",
+            rpc: process.env.HUDDLE01_RPC || "https://huddle-testnet.rpc.caldera.xyz/http"
+        },
+        9: {
+            name: "Custom Network",
+            rpc: process.env.CUSTOM_RPC || "https://your-custom-rpc-endpoint.com"
         }
-    }
+    },
+    mainnets: {}
 };
