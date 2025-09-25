@@ -264,7 +264,7 @@ generate_nitro_pcr0_remote() {
     echo -e "${BLUE}⏳ Running workflow and capturing run ID...${NC}"
     gh workflow run "Build Enclaver Docker Image" \
         --repo EspressoSystems/aws-nitro \
-        --ref add-image-tag \
+        --ref 4cpu \
         -F nitro_node_image_path="$nitro_node_image_path" \
         -F config_hash="0000000000000000000000000000000000000000000000000000000000000000"
 
@@ -307,7 +307,7 @@ generate_nitro_pcr0_remote() {
             keccak_hash=$(echo "$run_log" | grep -E 'PCR0 keccak hash: 0x[0-9a-fA-F]+' | tail -n1 | sed -n 's/.*PCR0 keccak hash: \(0x[0-9a-fA-F]*\).*/\1/p')
             
             local tag="${nitro_node_image_path##*:}"
-            image_name="ghcr.io/espressosystems/aws-nitro-poster:${tag}"
+            image_name="ghcr.io/espressosystems/aws-nitro-poster:${tag}-4cpu"
             echo -e "${BLUE}📦 Generated image name: ${image_name}${NC}"
             
             # Quick check if image is available
