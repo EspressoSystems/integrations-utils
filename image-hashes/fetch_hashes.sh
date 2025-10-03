@@ -88,7 +88,6 @@ trap 'rm -f "$results_tmp"' EXIT
 
 jq -r '.tags[]' <<<"$tags_json" | while IFS= read -r tag; do
   [[ -z "$tag" ]] && continue
-  [[ -n "${TAG_REGEX:-}" ]] && { echo "$tag" | grep -Eq "$TAG_REGEX" || continue; }
   hash="$(get_hash_for_tag "$tag" || true)"
   [[ -n "$hash" ]] && printf "%s\t%s\n" "$tag" "$hash" >>"$results_tmp"
 done
