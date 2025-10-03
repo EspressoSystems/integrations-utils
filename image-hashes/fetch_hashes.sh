@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Load environment variables from .env if it exists
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="${SCRIPT_DIR}/../.env"
+if [[ -f "$ENV_FILE" ]]; then
+  set -a
+  source "$ENV_FILE"
+  set +a
+fi
+
 IMAGE_PATH="espressosystems/aws-nitro-poster"
 REG_BASE="https://ghcr.io/v2/${IMAGE_PATH}"
 
@@ -99,6 +108,8 @@ fi
 
 OUTPUT_FILE="${OUTPUT_FILE:-./hashes.md}"
 {
+  printf "# AWS Nitro Poster Image Hashes\n\n"
+  printf "_Generated: %s UTC_\n\n" "$(date -u '+%Y-%m-%d %H:%M:%S')"
   printf "| Image Tag | Enclave Hash |\n"
   printf "|-----------|-------------|\n"
   sort -t $'\t' -k1,1 "$results_tmp" | awk -F'\t' '{printf "| %s | %s |\n", $1, $2}'

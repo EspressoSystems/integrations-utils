@@ -1,3 +1,7 @@
+# AWS Nitro Poster Image Hashes
+
+_Generated: 2025-10-03 21:37:31 UTC_
+
 | Image Tag | Enclave Hash |
 |-----------|-------------|
 | add-logs-empty-batch | 0x34812b210f5dac31f9d5c67092b11309b69e065f2850c6818b15dfae4d53a6d7 |
@@ -11,7 +15,7 @@
 | pr-767-4cpu | 0x8af589303cc305eb0b427626823fbc956fe2ff06fb7033da158456081754d1ad |
 | pr-796 | 0xfc93d338d3769e8cce33774d6b4dae456109051fb7498b839ca3c1028402fd07 |
 | sha-a1c8c5c | 0x44daa0024923fb8eb6fc68c55e97e10b798276f4b637a240345fe8e59afa7920 |
-| v3.5.6-809e685-apechain | 0x7aecd90c36ae8cbf64c6a7e5d77e3560e319d62b42234faa4379af03eb41b68e |
+| v3.5.6-809e685-apechain | 0x70f096d3c5ff661327d6bc2818c24b429add897812f396db284f37b3076dabbc |
 | v3.5.6-809e685-apechain-4cpu | 0xb05fac9f4dab1db43d08becd89a83212a544d8f46fd7dcdf56b852a7c4f45f3c |
 | v3.5.6-ad7c36e | 0x3b0dc8c3fc2cf05353fa71734b06c3065c34f4c3f9572f592123be55f75b6186 |
 | v3.5.6-ad7c36e-4cpu | 0x72e8aa152833cc4e33244031f95b785dbc72d6c45c6cfb8367918cf8ce55f7cd |
