@@ -2,6 +2,13 @@
 
 Extracts enclave hashes from [aws-nitro-poster](https://github.com/EspressoSystems/aws-nitro/pkgs/container/aws-nitro-poster) Docker images on GitHub Container Registry (GHCR).
 
+> **⚠️ Important Disclaimer:**
+> - These images are **only for AWS Nitro TEE environments**.
+> - Before using any image version, **always check the [nitro-espresso-integration releases](https://github.com/EspressoSystems/nitro-espresso-integration/releases)** to ensure:
+>   - The version is properly released (not a pre-release)
+>   - The version matches your deployment requirements
+>   - The release notes don't indicate any known issues
+
 ## What it does
 
 The script fetches all tagged versions of the `aws-nitro-poster` image and extracts the `enclave.hash` label (or parses it from the image description) for each tag, then outputs a Markdown table to `hashes.md`.
@@ -73,5 +80,6 @@ The script generates `hashes.md` with a table like:
 
 ## References
 
-- [aws-nitro-poster versions](https://github.com/EspressoSystems/aws-nitro/pkgs/container/aws-nitro-poster/versions?filters%5Bversion_type%5D=tagged)
+- [nitro-espresso-integration releases](https://github.com/EspressoSystems/nitro-espresso-integration/releases) - **Check here before using any image version**
+- [aws-nitro-poster versions](https://github.com/EspressoSystems/aws-nitro/pkgs/container/aws-nitro-poster/versions?filters%5Bversion_type%5D=tagged) - Container registry with all image tags
 - Images are tagged via CI with `LABEL enclave.hash="0x..."` and `LABEL org.opencontainers.image.description="...PCR0: 0x..."`
