@@ -98,7 +98,11 @@ if [[ ! -s "$results_tmp" ]]; then
   exit 0
 fi
 
+OUTPUT_FILE="${OUTPUT_FILE:-./hashes.md}"
 {
-  printf "Image Tag\tEnclave Hash\n"
-  sort -t $'\t' -k1,1 "$results_tmp"
-} | column -t -s $'\t'
+  printf "| Image Tag | Enclave Hash |\n"
+  printf "|-----------|-------------|\n"
+  sort -t $'\t' -k1,1 "$results_tmp" | awk -F'\t' '{printf "| %s | %s |\n", $1, $2}'
+} > "$OUTPUT_FILE"
+
+echo "✓ Saved $(wc -l < "$OUTPUT_FILE" | tr -d ' ') entries to: $OUTPUT_FILE"
