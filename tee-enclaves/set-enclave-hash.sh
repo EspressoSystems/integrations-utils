@@ -264,7 +264,7 @@ generate_nitro_pcr0_remote() {
     echo -e "${BLUE}⏳ Running workflow and capturing run ID...${NC}"
     gh workflow run "Build Enclaver Docker Image" \
         --repo EspressoSystems/aws-nitro \
-        --ref add-image-tag \
+        --ref main \
         -F nitro_node_image_path="$nitro_node_image_path" \
         -F config_hash="0000000000000000000000000000000000000000000000000000000000000000"
 
