@@ -428,6 +428,7 @@ show_usage() {
     echo "  (no args)           - Full automation with contract update (legacy report.txt method)"
     echo "  --sgx-docker IMAGE  - SGX automation using Docker image extraction"
     echo "  --contract-only     - Contract-only mode: input hash directly and update contract"
+    echo "  --image-only        - Image-only mode: generate enclave image/hash without contract update"
     echo "  --help              - Show this help"
     echo ""
     echo "Environment Variables:"
@@ -444,6 +445,7 @@ show_usage() {
     echo "  $0                                        # Full automation with contract update (report.txt)"
     echo "  $0 --sgx-docker myregistry/sgx-app:v1.0  # SGX automation using Docker image"
     echo "  $0 --contract-only                       # Register/unregister hash directly"
+    echo "  $0 --image-only                          # Generate image/hash only"
     echo "  $0 --help                                # Show help"
     echo ""
     echo "  # With .env file containing RPC URLs"
@@ -455,6 +457,13 @@ show_usage() {
     echo "  • Register it in the TEE verifier contract (set valid=true)"
     echo "  • Unregister it from the TEE verifier contract (set valid=false)"
     echo "  This mode skips image generation/extraction and goes directly to contract interaction."
+    echo ""
+    echo "Image-Only Mode:"
+    echo "  Use --image-only when you want to generate an enclave image and extract the hash without"
+    echo "  updating any contracts. This is useful for:"
+    echo "  • Testing image generation workflows"
+    echo "  • Getting the hash for manual verification"
+    echo "  • Preparing for a later contract update"
 }
 
 display_next_steps() {
@@ -479,6 +488,75 @@ display_next_steps() {
 
 # =============================================================================
 # MAIN LOGIC
+# =============================================================================
+
+# =============================================================================
+# SHARED IMAGE GENERATION LOGIC
+# =============================================================================
+
+generate_enclave_image() {
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo -e "${GREEN}🛡️  TRUSTED EXECUTION ENVIRONMENTS${NC}"
+    echo ""
+    echo -e "   ${YELLOW}1.${NC}  🔷 Intel SGX"
+    echo -e "       └─ GitHub workflow (recommended) or legacy report.txt"
+    echo ""
+    echo -e "   ${YELLOW}2.${NC}  ☁️  AWS Nitro Enclaves"
+    echo -e "       └─ Generates Image and PCR0 hash via GitHub Actions"
+    echo ""
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    read -p "Select TEE type (1-2): " -n 1 -r
+    echo
+    echo ""
+    
+    case "$REPLY" in
+        2)
+            TEE_TYPE="nitro"
+            echo -e "${BLUE}📋 AWS Nitro PCR0 Generation${NC}"
+            echo "----------------------------------------"
+            generate_nitro_pcr0_remote
+            echo ""
+            ;;
+        1|*)
+            TEE_TYPE="sgx"
+            echo -e "${BLUE}📋 SGX Enclave Image & Hash Generation${NC}"
+            echo "----------------------------------------"
+            if [ -n "${SGX_DOCKER_IMAGE}" ]; then
+                echo -e "${BLUE}🐳 Using Docker image extraction method${NC}"
+                echo -e "${GREEN}✅ Docker image: ${SGX_DOCKER_IMAGE}${NC}"
+            else
+                echo ""
+                echo -e "${YELLOW}🔍 Choose SGX processing method:${NC}"
+                echo -e "   ${YELLOW}1.${NC}  🏗️  Generate GSC image and extract MRENCLAVE"
+                echo -e "   ${YELLOW}2.${NC}  📋 Use existing report.txt file (legacy)"
+                echo ""
+                read -p "Select method (1-2): " -n 1 -r
+                echo
+                echo ""
+                
+                case "$REPLY" in
+                    2)
+                        echo -e "${BLUE}📋 Using legacy report.txt method${NC}"
+                        check_report_file
+                        convert_to_binary
+                        decode_report_data
+                        extract_enclave_values
+                        ;;
+                    1|*)
+                        echo -e "${BLUE}🏗️  Building GSC image and extracting MRENCLAVE${NC}"
+                        generate_sgx_hash_remote
+                        ;;
+                esac
+            fi
+            echo ""
+            ;;
+    esac
+}
+
+# =============================================================================
+# CONTRACT-ONLY MODE
 # =============================================================================
 
 contract_only_automation() {
@@ -537,76 +615,44 @@ contract_only_automation() {
     prompt_contract_update "contract_only"
 }
 
+# =============================================================================
+# IMAGE-ONLY MODE
+# =============================================================================
+
+image_only_automation() {
+    echo -e "${BLUE}🔍 Image-Only Mode: Enclave Generation${NC}"
+    echo "======================================================="
+    
+    echo -e "${BLUE}📋 Step 1/3: Image Generation${NC}"
+    generate_enclave_image
+    
+    echo -e "${BLUE}📋 Step 2/3: Next Steps${NC}"
+    echo "----------------------------------------"
+    display_next_steps
+    echo ""
+    
+    echo -e "${BLUE}📋 Step 3/3: Generate Summary${NC}"
+    echo "----------------------------------------"
+    generate_summary
+    echo ""
+    
+    echo -e "${GREEN}✅ Image generation complete!${NC}"
+    echo -e "${YELLOW}💡 To update the contract with this hash, run:${NC}"
+    echo -e "${YELLOW}   $0 --contract-only${NC}"
+    echo ""
+}
+
+# =============================================================================
+# FULL AUTOMATION MODE
+# =============================================================================
+
 full_automation() {
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo -e "${GREEN}🛡️  TRUSTED EXECUTION ENVIRONMENTS${NC}"
-    echo ""
-    echo -e "   ${YELLOW}1.${NC}  🔷 Intel SGX"
-    echo -e "       └─ GitHub workflow (recommended) or legacy report.txt"
-    echo ""
-    echo -e "   ${YELLOW}2.${NC}  ☁️  AWS Nitro Enclaves"
-    echo -e "       └─ Generates Image and PCR0 hash via GitHub Actions"
-    echo ""
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    read -p "Select TEE type (1-2): " -n 1 -r
-    echo
-    echo ""
-    
-    case "$REPLY" in
-        2)
-            TEE_TYPE="nitro"
-            ;;
-        1|*)
-            TEE_TYPE="sgx"
-            ;;
-    esac
-    
     echo -e "${BLUE}🔍 Starting Full Enclave Update Automation${NC}"
     echo "======================================================="
-    echo ""    
-
-    case "$REPLY" in
-        2)
-            echo -e "${BLUE}📋 Step 1/7: AWS Nitro PCR0 Generation${NC}"
-            echo "----------------------------------------"
-            generate_nitro_pcr0_remote
-            echo ""
-            ;;
-        1|*)
-            echo -e "${BLUE}📋 Step 1/7: SGX Enclave Image & Hash Generation${NC}"
-            echo "----------------------------------------"
-            if [ -n "${SGX_DOCKER_IMAGE}" ]; then
-                echo -e "${BLUE}🐳 Using Docker image extraction method${NC}"
-                echo -e "${GREEN}✅ Docker image: ${SGX_DOCKER_IMAGE}${NC}"
-            else
-                echo ""
-                echo -e "${YELLOW}🔍 Choose SGX processing method:${NC}"
-                echo -e "   ${YELLOW}1.${NC}  🏗️  Generate GSC image and extract MRENCLAVE"
-                echo -e "   ${YELLOW}2.${NC}  📋 Use existing report.txt file (legacy)"
-                echo ""
-                read -p "Select method (1-2): " -n 1 -r
-                echo
-                echo ""
-                
-                case "$REPLY" in
-                    2)
-                        echo -e "${BLUE}📋 Using legacy report.txt method${NC}"
-                        check_report_file
-                        convert_to_binary
-                        decode_report_data
-                        extract_enclave_values
-                        ;;
-                    1|*)
-                        echo -e "${BLUE}🏗️  Building GSC image and extracting MRENCLAVE${NC}"
-                        generate_sgx_hash_remote
-                        ;;
-                esac
-            fi
-            echo ""
-            ;;
-    esac
+    echo ""
+    
+    echo -e "${BLUE}📋 Step 1/7: Image Generation${NC}"
+    generate_enclave_image
     
     echo -e "${BLUE}📋 Step 2/7: Next Steps${NC}"
     echo "----------------------------------------"
@@ -632,6 +678,9 @@ main() {
             ;;
         --contract-only)
             contract_only_automation
+            ;;
+        --image-only)
+            image_only_automation
             ;;
         --sgx-docker)
             if [ -z "${2:-}" ]; then
