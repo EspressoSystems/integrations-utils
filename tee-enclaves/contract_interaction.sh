@@ -85,48 +85,72 @@ select_target_chain() {
             NETWORK="Arbitrum Sepolia (NodeOps Testnet)"
             ;;
         7)
+            CHAIN_NAME="Huddle01 Testnet"
+            SEQUENCER_INBOX_ADDRESS="${HUDDLE01_TESTNET_SEQUENCER_INBOX_ADDRESS}"
+            RPC_URL="${ARBITRUM_SEPOLIA_RPC}"  # Huddle01 testnet settles on Arbitrum Sepolia
+            NETWORK="Arbitrum Sepolia (Huddle01 Testnet)"
+            ;;
+        8)
+            CHAIN_NAME="Rufus Testnet"
+            SEQUENCER_INBOX_ADDRESS="${RUFUS_TESTNET_SEQUENCER_INBOX_ADDRESS}"
+            RPC_URL="${ETHEREUM_SEPOLIA_RPC}"  # Rufus testnet settles on Arbitrum Sepolia
+            NETWORK="Arbitrum Sepolia (Rufus Testnet)"
+            ;;
+        9)
             CHAIN_NAME="Rari Mainnet"
             SEQUENCER_INBOX_ADDRESS="${RARI_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ARBITRUM_MAINNET_RPC}"  # Rari mainnet settles on Arbitrum One
             NETWORK="Arbitrum One (Rari Mainnet)"
             ;;
-        8)
+        10)
             CHAIN_NAME="LogX Mainnet"
             SEQUENCER_INBOX_ADDRESS="${LOGX_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ETHEREUM_MAINNET_RPC}"  # LogX mainnet settles on Ethereum Mainnet
             NETWORK="Ethereum Mainnet (LogX Mainnet)"
             ;;
-        9)
+        11)
             CHAIN_NAME="Appchain Mainnet"
             SEQUENCER_INBOX_ADDRESS="${APPCHAIN_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ETHEREUM_MAINNET_RPC}"  # Appchain mainnet settles on Ethereum Mainnet
             NETWORK="Ethereum Mainnet (Appchain Mainnet)"
             ;;
-        10)
+        12)
             CHAIN_NAME="T3RN Mainnet"
             SEQUENCER_INBOX_ADDRESS="${T3RN_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ARBITRUM_MAINNET_RPC}"  # T3RN mainnet settles on Arbitrum One
             NETWORK="Arbitrum One (T3RN Mainnet)"
             ;;
-        11)
+        13)
             CHAIN_NAME="Apechain Mainnet"
             SEQUENCER_INBOX_ADDRESS="${APECHAIN_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ARBITRUM_MAINNET_RPC}"  # Apechain mainnet settles on Arbitrum One
             NETWORK="Arbitrum One (Apechain Mainnet)"
             ;;
-        12)
+        14)
             CHAIN_NAME="NodeOps Mainnet"
             SEQUENCER_INBOX_ADDRESS="${NODEOPS_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ARBITRUM_MAINNET_RPC}"  # NodeOps mainnet settles on Arbitrum One
             NETWORK="Arbitrum One (NodeOps Mainnet)"
             ;;
-        13)
+        15)
+            CHAIN_NAME="Huddle01 Mainnet"
+            SEQUENCER_INBOX_ADDRESS="${HUDDLE01_MAINNET_SEQUENCER_INBOX_ADDRESS}"
+            RPC_URL="${ARBITRUM_MAINNET_RPC}"  # Huddle01 mainnet settles on Arbitrum One
+            NETWORK="Arbitrum One (Huddle01 Mainnet)"
+            ;;
+        16)
+            CHAIN_NAME="Rufus Mainnet"
+            SEQUENCER_INBOX_ADDRESS="${RUFUS_MAINNET_SEQUENCER_INBOX_ADDRESS}"
+            RPC_URL="${ETHEREUM_MAINNET_RPC}"  # Rufus mainnet settles on Arbitrum One
+            NETWORK="Ethereum Mainnet (Appchain Mainnet)"
+            ;;
+        17)
             CHAIN_NAME="Molten Mainnet"
             SEQUENCER_INBOX_ADDRESS="${MOLTEN_MAINNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ARBITRUM_MAINNET_RPC}"  # Molten mainnet settles on Arbitrum One
             NETWORK="Arbitrum One (Molten Mainnet)"
             ;;
-        14)
+        18)
             CHAIN_NAME="Custom Network"
             CUSTOM_SETUP=true
             echo -e "${PURPLE}🔧 Custom Network - Select RPC${NC}"
