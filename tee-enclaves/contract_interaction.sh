@@ -29,18 +29,22 @@ select_target_chain() {
     echo -e "   ${YELLOW}4.${NC}  T3RN Testnet"
     echo -e "   ${YELLOW}5.${NC}  Apechain Testnet"
     echo -e "   ${YELLOW}6.${NC}  NodeOps Testnet"
+    echo -e "   ${YELLOW}7.${NC}  Huddle01 Testnet"
+    echo -e "   ${YELLOW}8.${NC}  Rufus Testnet"
     echo -e "${GREEN}📡 MAINNETS${NC}"
-    echo -e "   ${YELLOW}7.${NC}  Rari Mainnet"
-    echo -e "   ${YELLOW}8.${NC}  LogX Mainnet"
-    echo -e "   ${YELLOW}9.${NC}  Appchain Mainnet"
-    echo -e "   ${YELLOW}10.${NC} T3RN Mainnet"
-    echo -e "   ${YELLOW}11.${NC} Apechain Mainnet"
-    echo -e "   ${YELLOW}12.${NC} NodeOps Mainnet"
-    echo -e "   ${YELLOW}13.${NC} Molten Mainnet\n"
+    echo -e "   ${YELLOW}9.${NC}  Rari Mainnet"
+    echo -e "   ${YELLOW}10.${NC}  LogX Mainnet"
+    echo -e "   ${YELLOW}11.${NC}  Appchain Mainnet"
+    echo -e "   ${YELLOW}12.${NC}  T3RN Mainnet"
+    echo -e "   ${YELLOW}13.${NC}  Apechain Mainnet"
+    echo -e "   ${YELLOW}14.${NC}  NodeOps Mainnet"
+    echo -e "   ${YELLOW}15.${NC}  Huddle01 Mainnet"
+    echo -e "   ${YELLOW}16.${NC}  Rufus Mainnet"
+    echo -e "   ${YELLOW}17.${NC}  Molten Mainnet\n"
     echo -e "${PURPLE}🔧 CUSTOM${NC}"
-    echo -e "   ${YELLOW}14.${NC}  Custom (Manual EspressoTEEVerifier)\n"
+    echo -e "   ${YELLOW}18.${NC}  Custom (Manual EspressoTEEVerifier)\n"
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    read -p "Select target chain (1-14): " -r CHAIN_SELECTION
+    read -p "Select target chain (1-18): " -r CHAIN_SELECTION
     echo
 
     case $CHAIN_SELECTION in
