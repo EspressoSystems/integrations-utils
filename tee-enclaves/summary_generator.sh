@@ -25,29 +25,19 @@ generate_nitro_summary() {
     local nitro_summary="${SUMMARY_SCRIPT_DIR}/summaries/nitro_${summary_timestamp}.txt"
     
     cat > "${nitro_summary}" << EOF
-AWS Nitro TEE Summary
+AWS Nitro TEE Contract Update Summary
 ===============================
 
 Generated: $(date)
 TEE Type: AWS Nitro
-Run ID: ${run_id}
-Image Name: ${enclaver_image_name}
 
-PCR0 Generation Results:
-- PCR0 keccak hash: ${keccak_hash}$([ -n "$image_name" ] && echo "
-- Docker image: ${image_name}")
+Enclave Hash:
 - MRENCLAVE: ${mrenclave}
-
-Use the generated docker image in the Nitro Box: ${image_name}
 
 Contract Update Parameters:
 - Contract Function: setEnclaveHash (0x93b5552e)
 - enclaveHash: 0x${mrenclave}
 - valid: true
-
-Workflow Details:
-- Repository: EspressoSystems/aws-nitro
-- Run ID: ${run_id}
 
 Next Steps:
 1. Go to Etherscan/Arbiscan
@@ -70,29 +60,14 @@ generate_sgx_summary() {
     local sgx_summary="${SUMMARY_SCRIPT_DIR}/summaries/sgx_${summary_timestamp}.txt"
     
     cat > "${sgx_summary}" << EOF
-Intel SGX TEE Summary
+Intel SGX TEE Contract Update Summary
 ===============================
 
 Generated: $(date)
 TEE Type: Intel SGX
 
-$(if [ -n "${base_image}" ] && [ -n "${gsc_image}" ]; then
-echo "GSC Workflow Process:"
-echo "- Nitro Image: ${base_image}"
-echo "- GSC Image: ${gsc_image}"
-echo "- Method: GitHub Actions workflow (EspressoSystems/gsc)"
-echo ""
-elif [ -n "${report_file}" ] && [ -f "${report_file}" ]; then
-echo "Legacy Method (report.txt):"
-cat "${report_file}"
-echo ""
-else
-echo "Method: Unknown/Direct extraction"
-echo ""
-fi)
-Processed Data:
+Enclave Hash:
 - MRENCLAVE: ${mrenclave}
-$(if [ -n "${mrsigner}" ]; then echo "- MRSIGNER: ${mrsigner}"; else echo "- MRSIGNER: (not available from GSC method)"; fi)
 
 Contract Update Parameters:
 - Contract Function: setEnclaveHash (0x93b5552e)
