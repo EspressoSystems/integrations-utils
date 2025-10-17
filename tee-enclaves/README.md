@@ -34,6 +34,7 @@ git checkout 4-cpu
 - **Generates AWS Nitro PCR0 hashes** via GitHub Actions workflows
 - **Updates existing contracts** by calling `setEnclaveHash()` function
 - **Supports contract-only mode** for direct hash registration/unregistration
+- **Supports image-only mode** for generating images/hashes without contract updates
 
 ## Files
 
@@ -76,6 +77,11 @@ The main script supports multiple workflow modes:
 - **Register/Unregister** - Choose to register (valid=true) or unregister (valid=false)
 - **Contract Update** - Update the contract with the provided hash
 
+### Image-Only Mode
+- **TEE Type Selection** - Choose between Intel SGX or AWS Nitro Enclaves
+- **Image Generation** - Generate enclave images and extract hashes
+- **No Contract Update** - Skips contract interaction, useful for testing and preparation
+
 ### SGX Docker Mode
 
 - **Docker Image Processing** - Extract MRENCLAVE from existing Docker images
@@ -85,6 +91,7 @@ The main script supports multiple workflow modes:
 
 - **No arguments** - Full automation with image generation and contract update
 - **`--contract-only`** - Contract-only mode for direct hash management
+- **`--image-only`** - Image-only mode for generating images/hashes without contract updates
 - **`--sgx-docker IMAGE`** - SGX automation using Docker image extraction
 - **`--help`** - Show help and usage information
 
@@ -126,6 +133,9 @@ cp env.template .env
 
 # Run full automation (image generation + contract update)
 ./set-enclave-hash.sh
+
+# Run image-only mode (generate image/hash without contract update)
+./set-enclave-hash.sh --image-only
 
 # Run contract-only mode (direct hash management)
 ./set-enclave-hash.sh --contract-only
