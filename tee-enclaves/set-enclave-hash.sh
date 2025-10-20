@@ -6,8 +6,8 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/config.sh"
-source "${SCRIPT_DIR}/summary_generator.sh"
-source "${SCRIPT_DIR}/contract_interaction.sh"
+source "${SCRIPT_DIR}/summary-generator.sh"
+source "${SCRIPT_DIR}/contract-interaction.sh"
 
 declare MRENCLAVE RPC_URL NETWORK
 
