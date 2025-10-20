@@ -13,9 +13,9 @@ This folder contains tools for updating TEE verifier contracts with enclave hash
 ## Files
 
 - `set-enclave-hash.sh` - Main script for contract updates
-- `contract_interaction.sh` - Contract interaction logic
+- `contract-interaction.sh` - Contract interaction logic
 - `config.sh` - Configuration values and environment setup
-- `summary_generator.sh` - Summary file generation for tracking updates
+- `summary-generator.sh` - Summary file generation for tracking updates
 - `env.template` - Environment variables template (in parent directory)
 - `README.md` - This file
 
