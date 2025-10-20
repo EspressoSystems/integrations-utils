@@ -141,8 +141,8 @@ select_target_chain() {
         16)
             CHAIN_NAME="Rufus Mainnet"
             SEQUENCER_INBOX_ADDRESS="${RUFUS_MAINNET_SEQUENCER_INBOX_ADDRESS}"
-            RPC_URL="${ETHEREUM_MAINNET_RPC}"  # Rufus mainnet settles on Arbitrum One
-            NETWORK="Ethereum Mainnet (Appchain Mainnet)"
+            RPC_URL="${ETHEREUM_MAINNET_RPC}"  # Rufus mainnet settles on Ethereum Mainnet
+            NETWORK="Ethereum Mainnet (Rufus Mainnet)"
             ;;
         17)
             CHAIN_NAME="Molten Mainnet"
