@@ -1,13 +1,6 @@
-# MR Enclave Update Automation
+# Enclave Hash Contract Update Tool
 
-This folder contains tools for processing MR enclave data and updating TEE contracts with new enclave hash values. The main script supports multiple workflows including SGX image generation, AWS Nitro PCR0 generation, and direct contract updates.
-
-## Related Repositories
-
-This tool integrates with the following GitHub repositories for automated image building:
-
-- **[EspressoSystems/gsc](https://github.com/EspressoSystems/gsc)** - Gramine Shielded Containers for Intel SGX image generation
-- **[EspressoSystems/aws-nitro](https://github.com/EspressoSystems/aws-nitro)** - AWS Nitro Enclaves image generation
+This folder contains tools for updating TEE verifier contracts with enclave hash values. The tool allows you to register or unregister enclave hashes directly on the blockchain without requiring image generation.
 
 ## Special Branches
 
@@ -29,21 +22,19 @@ git checkout 4-cpu
 
 ## What This Does
 
-- **Processes enclave data** from report.txt files or Docker images
-- **Generates SGX images** via GitHub Actions workflows
-- **Generates AWS Nitro PCR0 hashes** via GitHub Actions workflows
-- **Updates existing contracts** by calling `setEnclaveHash()` function
-- **Supports contract-only mode** for direct hash registration/unregistration
-- **Supports image-only mode** for generating images/hashes without contract updates
+- **Updates TEE verifier contracts** by calling `setEnclaveHash()` function
+- **Supports both Intel SGX and AWS Nitro** enclave types
+- **Register or unregister hashes** (set valid=true or valid=false)
+- **Works with multiple chains** - Ethereum and Arbitrum mainnets and testnets
+- **Automatic contract lookup** - Fetches verifier addresses from sequencer inbox contracts
 
 ## Files
 
-- `set-enclave-hash.sh` - Main automation script with multiple workflow modes
+- `set-enclave-hash.sh` - Main script for contract updates
+- `contract-interaction.sh` - Contract interaction logic
 - `config.sh` - Configuration values and environment setup
-- `summary_generator.sh` - Summary file generation
-- `extract_sgx_hash.sh` - SGX hash extraction from Docker images
-- `decode_report_data.sh` - Decodes enclave report data
-- `env.template` - Environment variables template
+- `summary-generator.sh` - Summary file generation for tracking updates
+- `env.template` - Environment variables template (in parent directory)
 - `README.md` - This file
 
 ## Setup
@@ -51,75 +42,83 @@ git checkout 4-cpu
 1. **Copy the environment template:**
 
    ```bash
-   cp env.template .env
+   cp ../env.template ../.env
    ```
 
 2. **Edit `.env` file:**
-   - Set `MAIN_TEE_VERIFIER_ADDRESS` to your existing TEE verifier contract address
    - Optionally set `PRIVATE_KEY` for automatic execution
    - Customize RPC URLs if needed (Ethereum Mainnet, Arbitrum Mainnet, Sepolia testnets)
 
 ## Usage
 
-The main script supports multiple workflow modes:
+The script is simple and straightforward:
 
-### Full Automation Mode (Default)
-
-1. **TEE Type Selection** - Choose between Intel SGX or AWS Nitro Enclaves
-2. **SGX Processing Method** - Choose between GitHub workflow or legacy report.txt
-3. **Image Generation** - Generate SGX images or extract from existing Docker images
-4. **Hash Extraction** - Extract MRENCLAVE/MRSIGNER values
-5. **Contract Update** - Update the TEE verifier contract
-
-### Contract-Only Mode
-
-- **Direct Hash Input** - Input a hash directly without image generation
-- **Register/Unregister** - Choose to register (valid=true) or unregister (valid=false)
-- **Contract Update** - Update the contract with the provided hash
-
-### Image-Only Mode
-- **TEE Type Selection** - Choose between Intel SGX or AWS Nitro Enclaves
-- **Image Generation** - Generate enclave images and extract hashes
-- **No Contract Update** - Skips contract interaction, useful for testing and preparation
-
-### SGX Docker Mode
-
-- **Docker Image Processing** - Extract MRENCLAVE from existing Docker images
-- **Contract Update** - Update the contract with extracted hash
+1. **Run the script** - No arguments needed
+2. **Input your enclave hash** - Provide the 64-character hex hash (with or without 0x prefix)
+3. **Select TEE type** - Choose Intel SGX or AWS Nitro Enclaves
+4. **Select target chain** - Choose from testnets and mainnets
+5. **Execute contract update** - Script will guide you through the transaction
 
 ## Options
 
-- **No arguments** - Full automation with image generation and contract update
-- **`--contract-only`** - Contract-only mode for direct hash management
-- **`--image-only`** - Image-only mode for generating images/hashes without contract updates
-- **`--sgx-docker IMAGE`** - SGX automation using Docker image extraction
+- **No arguments** - Default mode: update contract with enclave hash
 - **`--help`** - Show help and usage information
 
 ## Generated Files
 
-When you run the automation, summary files will be created in the `summaries/` folder:
+When you run the tool, summary files will be created in the `summaries/` folder:
 
-- `sgx_YYYYMMDD_HHMMSS.txt` - SGX workflow summary with MRENCLAVE/MRSIGNER
-- `nitro_YYYYMMDD_HHMMSS.txt` - AWS Nitro workflow summary with PCR0 hash
+- `sgx_YYYYMMDD_HHMMSS.txt` - SGX contract update summary with MRENCLAVE
+- `nitro_YYYYMMDD_HHMMSS.txt` - AWS Nitro contract update summary with MRENCLAVE
 
-## Network Options
+These summaries contain:
 
-The script supports 4 networks:
+- Timestamp of update
+- Enclave hash used
+- Contract parameters
+- Next steps for manual verification
 
-1. **Ethereum Mainnet** - Production Ethereum
-2. **Arbitrum Mainnet** - Production Arbitrum
-3. **Ethereum Sepolia** - Testnet Ethereum
-4. **Arbitrum Sepolia** - Testnet Arbitrum
+## Supported Chains
+
+The script supports multiple testnets and mainnets:
+
+**Testnets:**
+
+1. Rari Testnet
+2. LogX Testnet
+3. Appchain Testnet
+4. T3RN Testnet
+5. Apechain Testnet
+6. NodeOps Testnet
+7. Huddle01 Testnet
+8. Rufus Testnet
+
+**Mainnets:**
+9. Rari Mainnet
+10. LogX Mainnet
+11. Appchain Mainnet
+12. T3RN Mainnet
+13. Apechain Mainnet
+14. NodeOps Mainnet
+15. Huddle01 Mainnet
+16. Rufus Mainnet
+17. Molten Mainnet
+
+**Custom:**
+18. Custom Network (Manual EspressoTEEVerifier setup)
 
 ## Contract Update Process
 
 The script will:
 
-- **Process enclave data** - Extract MRENCLAVE/MRSIGNER values or generate new hashes
-- **Show contract details** - Display the TEE verifier contract address and network
-- **Display complete command** - Show the exact cast command to update the contract
-- **Execute automatically** - If PRIVATE_KEY is set in .env file
-- **Support register/unregister** - Choose to register (valid=true) or unregister (valid=false) hashes
+1. **Validate hash input** - Ensures the hash is 64 hex characters
+2. **Select TEE type** - Choose Intel SGX or AWS Nitro
+3. **Select chain** - Choose from available chains or custom setup
+4. **Fetch contract addresses** - Automatically get TEE verifier addresses
+5. **Show contract details** - Display the TEE verifier contract address and network
+6. **Display command** - Show the exact cast command to update the contract
+7. **Execute transaction** - If PRIVATE_KEY is set, execute the update
+8. **Generate summary** - Create a summary file for your records
 
 ## Quick Start
 
@@ -127,21 +126,34 @@ The script will:
 # Make scripts executable
 chmod +x *.sh
 
-# Setup environment
-cp env.template .env
-# Edit .env with your existing contract address and optionally PRIVATE_KEY
+# Setup environment (optional - for RPC URLs and private key)
+cp ../env.template ../.env
+# Edit .env if you want to pre-configure RPC URLs or PRIVATE_KEY
 
-# Run full automation (image generation + contract update)
+# Run the tool
 ./set-enclave-hash.sh
-
-# Run image-only mode (generate image/hash without contract update)
-./set-enclave-hash.sh --image-only
-
-# Run contract-only mode (direct hash management)
-./set-enclave-hash.sh --contract-only
-
-# Run SGX Docker mode (extract from Docker image)
-./set-enclave-hash.sh --sgx-docker myregistry/sgx-app:v1.0
 
 # Show help
 ./set-enclave-hash.sh --help
+```
+
+## Requirements
+
+- **Foundry (cast)** - For blockchain interactions. Install from [getfoundry.sh](https://getfoundry.sh)
+- **Bash** - For running the scripts
+- **RPC endpoints** - Ethereum/Arbitrum RPC URLs (can be configured in .env or selected at runtime)
+
+## Example Workflow
+
+```bash
+$ ./set-enclave-hash.sh
+
+# You'll be prompted to:
+# 1. Enter your enclave hash (64 hex characters)
+# 2. Select TEE type (SGX or Nitro)
+# 3. Choose your target chain
+# 4. Confirm the transaction details
+# 5. Execute the contract update
+
+# A summary file will be created in summaries/ for your records
+```
