@@ -250,15 +250,20 @@ setup_chain_non_interactive() {
 generate_summary() {
     echo -e "${YELLOW}📄 Generating summary files...${NC}"
     
+    local network="${NETWORK:-Not specified}"
+    local contract="${CONTRACT_ADDRESS:-Not specified}"
+    local valid="${VALID_FLAG:-true}"
+    local status="${EXECUTION_STATUS:-Not executed}"
+    
     if [ "$TEE_TYPE" = "sgx" ]; then
-        echo -e "${GREEN}✅ SGX enclave hash registered: ${MRENCLAVE}${NC}"
+        echo -e "${GREEN}✅ SGX enclave hash: ${MRENCLAVE}${NC}"
         
-        local summary_file=$(generate_sgx_summary "$MRENCLAVE" "" "" "" "")
+        local summary_file=$(generate_sgx_summary "$MRENCLAVE" "" "" "" "" "$network" "$contract" "$valid" "$status")
         echo -e "${GREEN}✅ Summary saved to ${summary_file}${NC}"
     else
-        echo -e "${GREEN}✅ AWS Nitro enclave hash registered: ${MRENCLAVE}${NC}"
+        echo -e "${GREEN}✅ AWS Nitro enclave hash: ${MRENCLAVE}${NC}"
         
-        local summary_file=$(generate_nitro_summary "" "" "$MRENCLAVE" "" "$MRENCLAVE")
+        local summary_file=$(generate_nitro_summary "" "" "$MRENCLAVE" "" "$MRENCLAVE" "$network" "$contract" "$valid" "$status")
         echo -e "${GREEN}✅ Summary saved to ${summary_file}${NC}"
     fi
 }

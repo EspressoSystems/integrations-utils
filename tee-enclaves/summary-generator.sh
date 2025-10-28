@@ -20,7 +20,10 @@ generate_nitro_summary() {
     local keccak_hash="$3"
     local image_name="$4"
     local mrenclave="$5"
-    
+    local network="${6:-Not specified}"
+    local contract_address="${7:-Not specified}"
+    local valid_flag="${8:-true}"
+    local execution_status="${9:-Not executed}"
     local summary_timestamp=$(get_summary_timestamp)
     local nitro_summary="${SUMMARY_SCRIPT_DIR}/summaries/nitro_${summary_timestamp}.txt"
     
@@ -30,20 +33,26 @@ AWS Nitro TEE Contract Update Summary
 
 Generated: $(date)
 TEE Type: AWS Nitro
+Execution Status: ${execution_status}
 
 Enclave Hash:
 - MRENCLAVE: ${mrenclave}
 
 Contract Update Parameters:
+- Network: ${network}
+- Contract Address: ${contract_address}
 - Contract Function: setEnclaveHash (0x93b5552e)
 - enclaveHash: 0x${mrenclave}
-- valid: true
+- valid: ${valid_flag}
 
 Next Steps:
 1. Go to Etherscan/Arbiscan
 2. Navigate to the EspressoNitroTEEVerifier contract
 3. Connect with owner wallet
 4. Call setEnclaveHash function with the above parameters
+
+Full Command (if not executed):
+cast send ${contract_address} "setEnclaveHash(bytes32,bool)" 0x${mrenclave} ${valid_flag} --rpc-url <RPC_URL> --private-key <PRIVATE_KEY>
 EOF
 
     echo "summaries/nitro_${summary_timestamp}.txt"

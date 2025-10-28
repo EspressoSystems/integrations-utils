@@ -138,6 +138,7 @@ update_contract_with_hash() {
     echo ""
     echo -e "${BLUE}📋 Generate Summary${NC}"
     echo "----------------------------------------"
+    export EXECUTION_STATUS="Prepared for execution"
     generate_summary
 }
 

@@ -151,14 +151,17 @@ execute_non_interactive() {
     
     # Generate summary without prompts
     echo -e "${YELLOW}📄 Generating summary files...${NC}"
-    generate_summary
     
     # Execute contract update if private key provided and auto-execute enabled
     if [ -n "$PRIVATE_KEY" ] && [ "$AUTO_EXECUTE" = true ]; then
+        export EXECUTION_STATUS="Successfully executed"
+        generate_summary
         if ! execute_contract_update "$VALID_FLAG"; then
             return 1
         fi
     else
+        export EXECUTION_STATUS="Not executed - command displayed for manual execution"
+        generate_summary
         display_execution_command
     fi
     
