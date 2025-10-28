@@ -82,7 +82,8 @@ Use the **non-interactive version** for automation, CI/CD pipelines, or batch op
 ### Optional Arguments
 
 - `-p, --private-key KEY` - Private key for contract execution (0x prefix optional)
-- `--auto-execute` - Skip confirmation and execute automatically
+- `--auto-execute` - Skip confirmation and execute contract update automatically
+- `--valid VALID_FLAG` - Valid flag for hash: `true` (register) or `false` (unregister), defaults to `true`
 - `--custom-rpc RPC_URL` - Custom RPC URL (required for custom chain - 18)
 - `--custom-address ADDRESS` - Custom EspressoTEEVerifier address (required for custom chain - 18)
 - `--help` - Show help message
@@ -96,11 +97,20 @@ Use the **non-interactive version** for automation, CI/CD pipelines, or batch op
   --tee-type sgx \
   --chain 2
 
-# Execute with private key (automatic execution)
+# Register hash with private key (automatic execution)
 ./set-enclave-hash.sh \
   --hash abcd1234... \
   --tee-type nitro \
   --chain 9 \
+  --private-key 0x1234... \
+  --auto-execute
+
+# Unregister hash with private key
+./set-enclave-hash.sh \
+  --hash abcd1234... \
+  --tee-type nitro \
+  --chain 9 \
+  --valid false \
   --private-key 0x1234... \
   --auto-execute
 

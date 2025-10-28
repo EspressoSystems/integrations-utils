@@ -109,6 +109,28 @@ update_contract_with_hash() {
     esac
     echo ""
     
+    echo -e "${BLUE}📋 Hash Status Selection${NC}"
+    echo "----------------------------------------"
+    echo -e "${YELLOW}📝 Do you want to register or unregister this hash?${NC}"
+    echo -e "   ${YELLOW}1.${NC}  ✅ Register (valid=true)"
+    echo -e "   ${YELLOW}2.${NC}  ❌ Unregister (valid=false)"
+    echo ""
+    read -p "Select action (1-2): " -n 1 -r
+    echo
+    echo ""
+    
+    case "$REPLY" in
+        2)
+            VALID_FLAG="false"
+            echo -e "${GREEN}✅ Selected: Unregister hash${NC}"
+            ;;
+        1|*)
+            VALID_FLAG="true"
+            echo -e "${GREEN}✅ Selected: Register hash${NC}"
+            ;;
+    esac
+    echo ""
+    
     echo -e "${BLUE}📋 Contract Update Setup${NC}"
     echo "----------------------------------------"
     prompt_contract_update

@@ -21,6 +21,7 @@ TEE_TYPE=""
 CHAIN_SELECTION=""
 PRIVATE_KEY_ARG=""
 AUTO_EXECUTE=false
+VALID_FLAG="true"
 
 # =============================================================================
 # HELP AND USAGE
@@ -47,6 +48,7 @@ show_help() {
     echo "  --auto-execute               Skip confirmation and execute contract update automatically"
     echo "  --custom-rpc RPC_URL         Custom RPC URL (required if chain=18 and custom RPC selected)"
     echo "  --custom-address ADDRESS     Custom EspressoTEEVerifier address (required for chain=18)"
+    echo "  --valid VALID_FLAG           Valid flag for contract update (true or false)"
     echo "  --help                       Show this help message"
     echo ""
     echo "Examples:"
@@ -96,6 +98,10 @@ parse_arguments() {
                 ;;
             --custom-address)
                 MAIN_TEE_VERIFIER_ADDRESS="$2"
+                shift 2
+                ;;
+            --valid)
+                VALID_FLAG="$2"
                 shift 2
                 ;;
             --help)
@@ -149,7 +155,7 @@ execute_non_interactive() {
     
     # Execute contract update if private key provided and auto-execute enabled
     if [ -n "$PRIVATE_KEY" ] && [ "$AUTO_EXECUTE" = true ]; then
-        if ! execute_contract_update; then
+        if ! execute_contract_update "$VALID_FLAG"; then
             return 1
         fi
     else

@@ -280,24 +280,29 @@ display_contract_details() {
 }
 
 display_execution_command() {
+    local valid_flag="${VALID_FLAG:-true}"
+    
     echo ""
     echo -e "${BLUE}📋 Command to execute the update:${NC}"
     if [ -n "$PRIVATE_KEY" ]; then
-        echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key ${PRIVATE_KEY:0:8}..."
+        echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} ${valid_flag} --rpc-url ${RPC_URL} --private-key ${PRIVATE_KEY:0:8}..."
     else
-        echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key <YOUR_PRIVATE_KEY>"
+        echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} ${valid_flag} --rpc-url ${RPC_URL} --private-key <YOUR_PRIVATE_KEY>"
         echo -e "${YELLOW}⚠️  Private key required. Use --private-key to provide it${NC}"
     fi
     echo -e "${YELLOW}⚠️  WARNING: Never share your private key${NC}"
 }
 
 execute_contract_update() {
+    local valid="${1:-true}"  # Default to true if not specified
+    
     echo ""
     echo -e "${YELLOW}🚀 Executing contract update...${NC}"
     echo -e "${YELLOW}⚠️  This will update the contract on ${NETWORK}${NC}"
+    echo -e "${YELLOW}📋 Setting valid=${valid}${NC}"
     echo ""
     
-    if cast send "${CONTRACT_ADDRESS}" "setEnclaveHash(bytes32,bool)" "0x${MRENCLAVE}" true --rpc-url "${RPC_URL}" --private-key "${PRIVATE_KEY}"; then
+    if cast send "${CONTRACT_ADDRESS}" "setEnclaveHash(bytes32,bool)" "0x${MRENCLAVE}" "$valid" --rpc-url "${RPC_URL}" --private-key "${PRIVATE_KEY}"; then
         echo ""
         echo -e "${GREEN}✅ Contract update successful!${NC}"
         echo -e "${GREEN}🎉 The enclave hash has been updated on ${NETWORK}${NC}"
