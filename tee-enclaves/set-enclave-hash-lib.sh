@@ -280,7 +280,7 @@ display_contract_details() {
     echo "Function: setEnclaveHash (0x93b5552e)"
     echo "Parameters:"
     echo "  - enclaveHash: 0x${MRENCLAVE}"
-    echo "  - valid: true"
+    echo "  - valid: ${VALID_FLAG:-true}"
     echo ""
 }
 
