@@ -83,7 +83,7 @@ Use the **non-interactive version** for automation, CI/CD pipelines, or batch op
 
 - `-p, --private-key KEY` - Private key for contract execution (0x prefix optional)
 - `--auto-execute` - Skip confirmation and execute contract update automatically
-- `--valid VALID_FLAG` - Valid flag for hash: `true` (register) or `false` (unregister), defaults to `true`
+- `--valid VALID_FLAG` - Valid flag for the hash: `true` (register) or `false` (unregister), defaults to `true`
 - `--custom-rpc RPC_URL` - Custom RPC URL (required for custom chain - 18)
 - `--custom-address ADDRESS` - Custom EspressoTEEVerifier address (required for custom chain - 18)
 - `--help` - Show help message
