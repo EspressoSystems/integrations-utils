@@ -144,7 +144,7 @@ setup_chain_non_interactive() {
             CHAIN_NAME="Rufus Testnet"
             SEQUENCER_INBOX_ADDRESS="${RUFUS_TESTNET_SEQUENCER_INBOX_ADDRESS}"
             RPC_URL="${ETHEREUM_SEPOLIA_RPC}"
-            NETWORK="Arbitrum Sepolia (Rufus Testnet)"
+            NETWORK="Ethereum Sepolia (Rufus Testnet)"
             ;;
         9)
             CHAIN_NAME="Rari Mainnet"
@@ -280,7 +280,7 @@ display_contract_details() {
     echo "Function: setEnclaveHash (0x93b5552e)"
     echo "Parameters:"
     echo "  - enclaveHash: 0x${MRENCLAVE}"
-    echo "  - valid: true"
+    echo "  - valid: ${VALID_FLAG:-true}"
     echo ""
 }
 
