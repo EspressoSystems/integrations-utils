@@ -36,7 +36,7 @@ show_help() {
     echo "Required Arguments:"
     echo "  -h, --hash HASH              64-character hex enclave hash (with or without 0x prefix)"
     echo "  -t, --tee-type TYPE          TEE type: 'sgx' or 'nitro'"
-    echo "  -c, --chain CHAIN            Chain selection number (1-18)"
+    echo "  -c, --chain-id CHAIN            Chain selection number (1-18)"
     echo "    Testnets:  1=Rari, 2=LogX, 3=Appchain, 4=T3RN, 5=Apechain,"
     echo "               6=NodeOps, 7=Huddle01, 8=Rufus"
     echo "    Mainnets:  9=Rari, 10=LogX, 11=Appchain, 12=T3RN, 13=Apechain,"
@@ -53,13 +53,13 @@ show_help() {
     echo ""
     echo "Examples:"
     echo "  # Non-interactive mode - display only"
-    echo "  $0 --hash abcd1234... --tee-type sgx --chain 2"
+    echo "  $0 --hash abcd1234... --tee-type sgx --chain-id 2"
     echo ""
     echo "  # Non-interactive with auto-execution"
-    echo "  $0 --hash abcd1234... --tee-type nitro --chain 9 --private-key 0x1234... --auto-execute"
+    echo "  $0 --hash abcd1234... --tee-type nitro --chain-id 9 --private-key 0x1234... --auto-execute"
     echo ""
     echo "  # Non-interactive with custom chain"
-    echo "  $0 --hash abcd1234... --tee-type nitro --chain 18 \\"
+    echo "  $0 --hash abcd1234... --tee-type nitro --chain-id 18 \\"
     echo "     --custom-rpc https://rpc.example.com \\"
     echo "     --custom-address 0x1234... --private-key 0x5678... --auto-execute"
     echo ""
@@ -80,7 +80,7 @@ parse_arguments() {
                 TEE_TYPE="$2"
                 shift 2
                 ;;
-            -c|--chain)
+            -c|--chain-id)
                 CHAIN_SELECTION="$2"
                 shift 2
                 ;;

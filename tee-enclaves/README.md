@@ -77,7 +77,7 @@ Use the **non-interactive version** for automation, CI/CD pipelines, or batch op
 
 - `-h, --hash HASH` - 64-character hex enclave hash (with or without 0x prefix)
 - `-t, --tee-type TYPE` - TEE type: `sgx` or `nitro`
-- `-c, --chain CHAIN` - Chain selection number (1-18)
+- `-c, --chain-id CHAIN` - Chain selection number (1-18)
 
 ### Optional Arguments
 
@@ -95,13 +95,13 @@ Use the **non-interactive version** for automation, CI/CD pipelines, or batch op
 ./set-enclave-hash.sh \
   --hash abcd1234... \
   --tee-type sgx \
-  --chain 2
+  --chain-id 2
 
 # Register hash with private key (automatic execution)
 ./set-enclave-hash.sh \
   --hash abcd1234... \
   --tee-type nitro \
-  --chain 9 \
+  --chain-id 9 \
   --private-key 0x1234... \
   --auto-execute
 
@@ -109,7 +109,7 @@ Use the **non-interactive version** for automation, CI/CD pipelines, or batch op
 ./set-enclave-hash.sh \
   --hash abcd1234... \
   --tee-type nitro \
-  --chain 9 \
+  --chain-id 9 \
   --valid false \
   --private-key 0x1234... \
   --auto-execute
@@ -118,7 +118,7 @@ Use the **non-interactive version** for automation, CI/CD pipelines, or batch op
 ./set-enclave-hash.sh \
   --hash abcd1234... \
   --tee-type nitro \
-  --chain 18 \
+  --chain-id 18 \
   --custom-rpc https://rpc.example.com \
   --custom-address 0x1234... \
   --private-key 0x5678... \
@@ -200,5 +200,5 @@ cp ../env.template ../.env
 # Edit .env if you want to pre-configure RPC URLs or PRIVATE_KEY
 
 ./set-enclave-hash-interactive.sh
-./set-enclave-hash.sh --hash 1234abcd... --tee-type sgx --chain 2
+./set-enclave-hash.sh --hash 1234abcd... --tee-type sgx --chain-id 2
 ```
