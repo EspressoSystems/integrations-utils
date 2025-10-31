@@ -394,15 +394,17 @@ send_contract_transaction() {
         return 1
     fi
     
+    local valid_flag="${VALID_FLAG:-true}"
+    
     echo ""
     echo -e "${BLUE}📋 Ready to execute contract update:${NC}"
-    echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} true --rpc-url ${RPC_URL} --private-key ${PRIVATE_KEY:0:8}... \n"
+    echo "cast send ${CONTRACT_ADDRESS} \"setEnclaveHash(bytes32,bool)\" 0x${MRENCLAVE} ${valid_flag} --rpc-url ${RPC_URL} --private-key ${PRIVATE_KEY:0:8}... \n"
     echo -e "${YELLOW}⚠️  This will actually update the contract on ${NETWORK}${NC}"
     read -p "Are you ready to execute this command? (y/n): " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo -e "${YELLOW}🚀 Executing contract update...${NC} \n"
-        if cast send "${CONTRACT_ADDRESS}" "setEnclaveHash(bytes32,bool)" "0x${MRENCLAVE}" true --rpc-url "${RPC_URL}" --private-key "${PRIVATE_KEY}"; then
+        if cast send "${CONTRACT_ADDRESS}" "setEnclaveHash(bytes32,bool)" "0x${MRENCLAVE}" "$valid_flag" --rpc-url "${RPC_URL}" --private-key "${PRIVATE_KEY}"; then
             echo -e "${GREEN}✅ Contract update successful!${NC}"
             echo -e "${GREEN}🎉 The enclave hash has been updated on ${NETWORK}${NC}"
         else
